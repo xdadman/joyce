@@ -84,6 +84,14 @@ class RegName(Enum):
     ACTIVE_POWER = auto()
     REACTIVE_POWER = auto()
     POWER_FACTOR = auto()
+    GRID_FREQUENCY = auto()
+    INVERTER_EFFICIENCY = auto()
+    INTERNAL_TEMPERATURE = auto()
+    CUMULATIVE_POWER_GENERATION = auto()
+    POWER_GENERATION_DAY = auto()
+    POWER_GENERATION_MONTH = auto()
+    POWER_GENERATION_YEAR = auto()
+    ACTIVE_POWER_CALCULATION = auto()
 
 
 
@@ -254,9 +262,18 @@ class GoodweHTRegs:
             RegName.ACTIVE_POWER: Reg("Active Power", "active_power", RegType.I32, 32080, 0.001),
             RegName.REACTIVE_POWER: Reg("Reactive Power", "reactive_power", RegType.I32, 32082, 0.001),
             RegName.POWER_FACTOR: Reg("Power Factor", "power_factor", RegType.I16, 32084, 0.001),
+            RegName.GRID_FREQUENCY: Reg("Grid Frequency", "grid_frequency", RegType.U16, 32085, 0.01),
+            RegName.INVERTER_EFFICIENCY: Reg("Inverter Efficiency", "inverter_efficiency", RegType.U16, 32086, 0.01),
+            RegName.INTERNAL_TEMPERATURE: Reg("Internal Temperature", "internal_temperature", RegType.I16, 32087, 0.1),
+
+            RegName.CUMULATIVE_POWER_GENERATION: Reg("Cumulative Power Generation", "cumulative_power_generation", RegType.U32, 32106, 0.01),
+            RegName.POWER_GENERATION_DAY: Reg("Power Generation Day", "power_generation_day", RegType.U32, 32114, 0.01),
+            RegName.POWER_GENERATION_MONTH: Reg("Power Generation Month", "power_generation_month", RegType.U32, 32116, 0.01),
+            RegName.POWER_GENERATION_YEAR: Reg("Power Generation Year", "power_generation_year", RegType.U32, 32118, 0.01),
+            RegName.ACTIVE_POWER_CALCULATION: Reg("Active Power Calculation", "active_power_calculation", RegType.I32, 32180, 1), #0.001),
         }
         self.total_regs_count = self.calculate_regs_count()
-        self.last_plant_data_addr = self.get(RegName.POWER_FACTOR).address
+        self.last_plant_data_addr = self.get(RegName.ACTIVE_POWER_CALCULATION).address
 
     def set_value(self, name: RegName, value):
         reg: Reg = self.regs[name]

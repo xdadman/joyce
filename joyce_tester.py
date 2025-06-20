@@ -42,12 +42,18 @@ class Tester:
             #    handle_local_echo=False,
         )
         await self.client.connect()
-        result0 = await self.client.read_holding_registers(32002, 1, slave=SLAVE)
-        result1 = await self.client.read_holding_registers(32016, self.addr_diff(RegName.PV1_U, RegName.POWER_FACTOR), slave=SLAVE)
         regs = self.regs
 
+        result0 = await self.client.read_holding_registers(32002, 1, slave=SLAVE)
+        result1 = await self.client.read_holding_registers(32016, self.addr_diff(RegName.PV1_U, RegName.INTERNAL_TEMPERATURE), slave=SLAVE)
+        result2 = await self.client.read_holding_registers(32106, self.addr_diff(RegName.CUMULATIVE_POWER_GENERATION, RegName.POWER_GENERATION_YEAR), slave=SLAVE)
+        #result3 = await self.client.read_holding_registers(32180, self.addr_diff(RegName.ACTIVE_POWER_CALCULATION, RegName.ACTIVE_POWER_CALCULATION), slave=SLAVE)
+
+
         regs.decode(result0.registers, regs.get(RegName.OPER_STATUS).address, regs.get(RegName.OPER_STATUS).address)
-        regs.decode(result1.registers, regs.get(RegName.PV1_U).address, regs.get(RegName.POWER_FACTOR).address)
+        regs.decode(result1.registers, regs.get(RegName.PV1_U).address, regs.get(RegName.INTERNAL_TEMPERATURE).address)
+        regs.decode(result2.registers, regs.get(RegName.CUMULATIVE_POWER_GENERATION).address, regs.get(RegName.POWER_GENERATION_YEAR).address)
+        #regs.decode(result3.registers, regs.get(RegName.ACTIVE_POWER_CALCULATION).address, regs.get(RegName.ACTIVE_POWER_CALCULATION).address)
 
         status = regs.get_value(RegName.OPER_STATUS)
         print(status)
@@ -88,9 +94,32 @@ class Tester:
         print(f"Active Power: {active_power:0.2f} kW")
         print(f"Reactive Power: {reactive_power:0.2f} kvar")
         print(f"Power Factor: {power_factor:0.3f}")
+        
+        print("\n--- Power Quality & Efficiency ---")
+        grid_frequency = regs.get_value(RegName.GRID_FREQUENCY)
+        inverter_efficiency = regs.get_value(RegName.INVERTER_EFFICIENCY)
+        internal_temperature = regs.get_value(RegName.INTERNAL_TEMPERATURE)
+        print(f"Grid Frequency: {grid_frequency:0.2f} Hz")
+        print(f"Inverter Efficiency: {inverter_efficiency:0.2f} %")
+        print(f"Internal Temperature: {internal_temperature:0.1f} °C")
+        
+        print("\n--- Energy Generation ---")
+        cumulative_power_generation = regs.get_value(RegName.CUMULATIVE_POWER_GENERATION)
+        power_generation_day = regs.get_value(RegName.POWER_GENERATION_DAY)
+        power_generation_month = regs.get_value(RegName.POWER_GENERATION_MONTH)
+        power_generation_year = regs.get_value(RegName.POWER_GENERATION_YEAR)
+        print(f"Cumulative Power Generation: {cumulative_power_generation:0.2f} kWh")
+        print(f"Power Generation (Day): {power_generation_day:0.2f} kWh")
+        print(f"Power Generation (Month): {power_generation_month:0.2f} kWh")
+        print(f"Power Generation (Year): {power_generation_year:0.2f} kWh")
+        
+        print("\n--- Active Power Calculation ---")
+        active_power_calculation = regs.get_value(RegName.ACTIVE_POWER_CALCULATION)
+        print(f"Active Power Calculation: {active_power_calculation:0.2f} kW")
 
     def addr_diff(self, start_name, end_name):
-        #dif = self.regs.get(end_name).address - self.regs.get(start_name).address
+        dif = self.regs.get(end_name).address - self.regs.get(start_name).address
+        print(f"addre diff {dif}")
         return self.regs.get(end_name).address - self.regs.get(start_name).address + self.regs.get(end_name).get_size()
 
 
