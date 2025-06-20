@@ -48,12 +48,14 @@ class Tester:
         result1 = await self.client.read_holding_registers(32016, self.addr_diff(RegName.PV1_U, RegName.INTERNAL_TEMPERATURE), slave=SLAVE)
         result2 = await self.client.read_holding_registers(32106, self.addr_diff(RegName.CUMULATIVE_POWER_GENERATION, RegName.POWER_GENERATION_YEAR), slave=SLAVE)
         #result3 = await self.client.read_holding_registers(32180, self.addr_diff(RegName.ACTIVE_POWER_CALCULATION, RegName.ACTIVE_POWER_CALCULATION), slave=SLAVE)
+        result_rtc = await self.client.read_holding_registers(41313, self.addr_diff(RegName.RTC_YEAR_MONTH, RegName.RTC_MINUTE_SECOND), slave=SLAVE)
 
 
         regs.decode(result0.registers, regs.get(RegName.OPER_STATUS).address, regs.get(RegName.OPER_STATUS).address)
         regs.decode(result1.registers, regs.get(RegName.PV1_U).address, regs.get(RegName.INTERNAL_TEMPERATURE).address)
         regs.decode(result2.registers, regs.get(RegName.CUMULATIVE_POWER_GENERATION).address, regs.get(RegName.POWER_GENERATION_YEAR).address)
         #regs.decode(result3.registers, regs.get(RegName.ACTIVE_POWER_CALCULATION).address, regs.get(RegName.ACTIVE_POWER_CALCULATION).address)
+        regs.decode(result_rtc.registers, regs.get(RegName.RTC_YEAR_MONTH).address, regs.get(RegName.RTC_MINUTE_SECOND).address)
 
         status = regs.get_value(RegName.OPER_STATUS)
         print(status)
@@ -116,6 +118,24 @@ class Tester:
         print("\n--- Active Power Calculation ---")
         active_power_calculation = regs.get_value(RegName.ACTIVE_POWER_CALCULATION)
         print(f"Active Power Calculation: {active_power_calculation:0.2f} kW")
+        
+        print("\n--- Real-Time Clock (RTC) ---")
+        rtc_year_month = regs.get_value(RegName.RTC_YEAR_MONTH)
+        rtc_day_hour = regs.get_value(RegName.RTC_DAY_HOUR)
+        rtc_minute_second = regs.get_value(RegName.RTC_MINUTE_SECOND)
+        
+        year = (rtc_year_month >> 8) & 0xFF
+        month = rtc_year_month & 0xFF
+        day = (rtc_day_hour >> 8) & 0xFF
+        hour = rtc_day_hour & 0xFF
+        minute = (rtc_minute_second >> 8) & 0xFF
+        second = rtc_minute_second & 0xFF
+        
+        # Convert 2-digit year to 4-digit (assuming 20xx)
+        full_year = 2000 + year if year >= 15 else 2000 + year
+        
+        print(f"Device RTC: {full_year:04d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:02d}")
+        print(f"Raw Values - Year/Month: 0x{rtc_year_month:04X}, Day/Hour: 0x{rtc_day_hour:04X}, Minute/Second: 0x{rtc_minute_second:04X}")
 
     def addr_diff(self, start_name, end_name):
         dif = self.regs.get(end_name).address - self.regs.get(start_name).address

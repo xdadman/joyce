@@ -92,6 +92,9 @@ class RegName(Enum):
     POWER_GENERATION_MONTH = auto()
     POWER_GENERATION_YEAR = auto()
     ACTIVE_POWER_CALCULATION = auto()
+    RTC_YEAR_MONTH = auto()
+    RTC_DAY_HOUR = auto()
+    RTC_MINUTE_SECOND = auto()
 
 
 
@@ -271,6 +274,9 @@ class GoodweHTRegs:
             RegName.POWER_GENERATION_MONTH: Reg("Power Generation Month", "power_generation_month", RegType.U32, 32116, 0.01),
             RegName.POWER_GENERATION_YEAR: Reg("Power Generation Year", "power_generation_year", RegType.U32, 32118, 0.01),
             RegName.ACTIVE_POWER_CALCULATION: Reg("Active Power Calculation", "active_power_calculation", RegType.I32, 32180, 1), #0.001),
+            RegName.RTC_YEAR_MONTH: Reg("RTC Year/Month", "rtc_year_month", RegType.U16, 41313),
+            RegName.RTC_DAY_HOUR: Reg("RTC Day/Hour", "rtc_day_hour", RegType.U16, 41314),
+            RegName.RTC_MINUTE_SECOND: Reg("RTC Minute/Second", "rtc_minute_second", RegType.U16, 41315),
         }
         self.total_regs_count = self.calculate_regs_count()
         self.last_plant_data_addr = self.get(RegName.ACTIVE_POWER_CALCULATION).address
