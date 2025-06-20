@@ -26,6 +26,50 @@ class RegName(Enum):
     PV1_C = auto()
     PV2_U = auto()
     PV2_C = auto()
+    PV3_U = auto()
+    PV3_C = auto()
+    PV4_U = auto()
+    PV4_C = auto()
+    PV5_U = auto()
+    PV5_C = auto()
+    PV6_U = auto()
+    PV6_C = auto()
+    PV7_U = auto()
+    PV7_C = auto()
+    PV8_U = auto()
+    PV8_C = auto()
+    PV9_U = auto()
+    PV9_C = auto()
+    PV10_U = auto()
+    PV10_C = auto()
+    PV11_U = auto()
+    PV11_C = auto()
+    PV12_U = auto()
+    PV12_C = auto()
+    PV13_U = auto()
+    PV13_C = auto()
+    PV14_U = auto()
+    PV14_C = auto()
+    PV15_U = auto()
+    PV15_C = auto()
+    PV16_U = auto()
+    PV16_C = auto()
+    PV17_U = auto()
+    PV17_C = auto()
+    PV18_U = auto()
+    PV18_C = auto()
+    PV19_U = auto()
+    PV19_C = auto()
+    PV20_U = auto()
+    PV20_C = auto()
+    PV21_U = auto()
+    PV21_C = auto()
+    PV22_U = auto()
+    PV22_C = auto()
+    PV23_U = auto()
+    PV23_C = auto()
+    PV24_U = auto()
+    PV24_C = auto()
 
 
 
@@ -135,12 +179,56 @@ class GoodweHTRegs:
         self.regs = {
             RegName.OPER_STATUS: Reg("Operation status", "operation_status", RegType.U16, 32002),
             RegName.PV1_U: Reg("PV1_U", "pv1_u", RegType.I16, 32016, 0.1),
-            RegName.PV1_C: Reg("PV1_C", "pv2_c", RegType.I16, 32017, 0.1),
-            RegName.PV2_U: Reg("PV2_U", "pv1_u", RegType.I16, 32018, 0.1),
-            RegName.PV2_C: Reg("PV2_C", "pv2_c", RegType.I16, 32019, 0.1),
+            RegName.PV1_C: Reg("PV1_C", "pv1_c", RegType.I16, 32017, 0.01),
+            RegName.PV2_U: Reg("PV2_U", "pv2_u", RegType.I16, 32018, 0.1),
+            RegName.PV2_C: Reg("PV2_C", "pv2_c", RegType.I16, 32019, 0.01),
+            RegName.PV3_U: Reg("PV3_U", "pv3_u", RegType.I16, 32020, 0.1),
+            RegName.PV3_C: Reg("PV3_C", "pv3_c", RegType.I16, 32021, 0.01),
+            RegName.PV4_U: Reg("PV4_U", "pv4_u", RegType.I16, 32022, 0.1),
+            RegName.PV4_C: Reg("PV4_C", "pv4_c", RegType.I16, 32023, 0.01),
+            RegName.PV5_U: Reg("PV5_U", "pv5_u", RegType.I16, 32024, 0.1),
+            RegName.PV5_C: Reg("PV5_C", "pv5_c", RegType.I16, 32025, 0.01),
+            RegName.PV6_U: Reg("PV6_U", "pv6_u", RegType.I16, 32026, 0.1),
+            RegName.PV6_C: Reg("PV6_C", "pv6_c", RegType.I16, 32027, 0.01),
+            RegName.PV7_U: Reg("PV7_U", "pv7_u", RegType.I16, 32028, 0.1),
+            RegName.PV7_C: Reg("PV7_C", "pv7_c", RegType.I16, 32029, 0.01),
+            RegName.PV8_U: Reg("PV8_U", "pv8_u", RegType.I16, 32030, 0.1),
+            RegName.PV8_C: Reg("PV8_C", "pv8_c", RegType.I16, 32031, 0.01),
+            RegName.PV9_U: Reg("PV9_U", "pv9_u", RegType.I16, 32032, 0.1),
+            RegName.PV9_C: Reg("PV9_C", "pv9_c", RegType.I16, 32033, 0.01),
+            RegName.PV10_U: Reg("PV10_U", "pv10_u", RegType.I16, 32034, 0.1),
+            RegName.PV10_C: Reg("PV10_C", "pv10_c", RegType.I16, 32035, 0.01),
+            RegName.PV11_U: Reg("PV11_U", "pv11_u", RegType.I16, 32036, 0.1),
+            RegName.PV11_C: Reg("PV11_C", "pv11_c", RegType.I16, 32037, 0.01),
+            RegName.PV12_U: Reg("PV12_U", "pv12_u", RegType.I16, 32038, 0.1),
+            RegName.PV12_C: Reg("PV12_C", "pv12_c", RegType.I16, 32039, 0.01),
+            RegName.PV13_U: Reg("PV13_U", "pv13_u", RegType.I16, 32040, 0.1),
+            RegName.PV13_C: Reg("PV13_C", "pv13_c", RegType.I16, 32041, 0.01),
+            RegName.PV14_U: Reg("PV14_U", "pv14_u", RegType.I16, 32042, 0.1),
+            RegName.PV14_C: Reg("PV14_C", "pv14_c", RegType.I16, 32043, 0.01),
+            RegName.PV15_U: Reg("PV15_U", "pv15_u", RegType.I16, 32044, 0.1),
+            RegName.PV15_C: Reg("PV15_C", "pv15_c", RegType.I16, 32045, 0.01),
+            RegName.PV16_U: Reg("PV16_U", "pv16_u", RegType.I16, 32046, 0.1),
+            RegName.PV16_C: Reg("PV16_C", "pv16_c", RegType.I16, 32047, 0.01),
+            RegName.PV17_U: Reg("PV17_U", "pv17_u", RegType.I16, 32048, 0.1),
+            RegName.PV17_C: Reg("PV17_C", "pv17_c", RegType.I16, 32049, 0.01),
+            RegName.PV18_U: Reg("PV18_U", "pv18_u", RegType.I16, 32050, 0.1),
+            RegName.PV18_C: Reg("PV18_C", "pv18_c", RegType.I16, 32051, 0.01),
+            RegName.PV19_U: Reg("PV19_U", "pv19_u", RegType.I16, 32052, 0.1),
+            RegName.PV19_C: Reg("PV19_C", "pv19_c", RegType.I16, 32053, 0.01),
+            RegName.PV20_U: Reg("PV20_U", "pv20_u", RegType.I16, 32054, 0.1),
+            RegName.PV20_C: Reg("PV20_C", "pv20_c", RegType.I16, 32055, 0.01),
+            RegName.PV21_U: Reg("PV21_U", "pv21_u", RegType.I16, 32056, 0.1),
+            RegName.PV21_C: Reg("PV21_C", "pv21_c", RegType.I16, 32057, 0.01),
+            RegName.PV22_U: Reg("PV22_U", "pv22_u", RegType.I16, 32058, 0.1),
+            RegName.PV22_C: Reg("PV22_C", "pv22_c", RegType.I16, 32059, 0.01),
+            RegName.PV23_U: Reg("PV23_U", "pv23_u", RegType.I16, 32060, 0.1),
+            RegName.PV23_C: Reg("PV23_C", "pv23_c", RegType.I16, 32061, 0.01),
+            RegName.PV24_U: Reg("PV24_U", "pv24_u", RegType.I16, 32062, 0.1),
+            RegName.PV24_C: Reg("PV24_C", "pv24_c", RegType.I16, 32063, 0.01),
         }
         self.total_regs_count = self.calculate_regs_count()
-        self.last_plant_data_addr = self.get(RegName.PV2_C).address
+        self.last_plant_data_addr = self.get(RegName.PV24_C).address
 
     def set_value(self, name: RegName, value):
         reg: Reg = self.regs[name]

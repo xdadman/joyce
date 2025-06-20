@@ -42,11 +42,11 @@ class Tester:
         )
         await self.client.connect()
         result0 = await self.client.read_holding_registers(32002, 1, slave=SLAVE)
-        result1 = await self.client.read_holding_registers(32016, 4, slave=SLAVE)
+        result1 = await self.client.read_holding_registers(32016, 68, slave=SLAVE)
         regs = GoodweHTRegs()
 
         regs.decode(result0.registers, regs.get(RegName.OPER_STATUS).address, regs.get(RegName.OPER_STATUS).address)
-        regs.decode(result1.registers, regs.get(RegName.PV1_U).address, regs.get(RegName.PV2_C).address)
+        regs.decode(result1.registers, regs.get(RegName.PV1_U).address, regs.get(RegName.PV24_C).address)
 
         status = regs.get_value(RegName.OPER_STATUS)
         print(status)
@@ -54,7 +54,19 @@ class Tester:
         pv1_u = regs.get_value(RegName.PV1_U)
         pv1_c = regs.get_value(RegName.PV1_C)
 
-        print(f"PV1: {pv1_u} {pv1_c}")
+        pv2_u = regs.get_value(RegName.PV2_U)
+        pv2_c = regs.get_value(RegName.PV2_C)
+
+        pv3_u = regs.get_value(RegName.PV3_U)
+        pv3_c = regs.get_value(RegName.PV3_C)
+
+        pv4_u = regs.get_value(RegName.PV4_U)
+        pv4_c = regs.get_value(RegName.PV4_C)
+
+        print(f"PV1: {pv1_u:0.1f} {pv1_c:0.1f}")
+        print(f"PV2: {pv2_u:0.1f} {pv2_c:0.1f}")
+        print(f"PV3: {pv3_u:0.1f} {pv3_c:0.1f}")
+        print(f"PV4: {pv4_u:0.1f} {pv4_c:0.1f}")
 
 
 async def main():
