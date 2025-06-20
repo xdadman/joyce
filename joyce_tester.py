@@ -4,6 +4,8 @@ from pymodbus.client import AsyncModbusSerialClient
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadDecoder
 
+from registers_goodwe_ht import GoodweHTRegs, RegName
+
 SERIAL_PORT = "SERIAL_PORT"
 SERIAL_BAUDRATE = "SERIAL_BAUDRATE"
 SERIAL_STOPBITS = "SERIAL_STOPBITS"
@@ -14,7 +16,8 @@ SLAVE = 247
 class Tester:
     def __init__(self):
         self.cfg = {
-            SERIAL_PORT: "/dev/ttyUSB0",
+            #SERIAL_PORT: "/dev/ttyUSB0",
+            SERIAL_PORT: "/tmp/ttyVirtual",
             SERIAL_BAUDRATE: 9600,
             SERIAL_STOPBITS: 1,
             SERIAL_PARITY: "N",
@@ -38,10 +41,20 @@ class Tester:
             #    handle_local_echo=False,
         )
         await self.client.connect()
-        result = await self.client.read_holding_registers(32016, 1, slave=SLAVE)
-        decoder = BinaryPayloadDecoder.fromRegisters(result.registers, byteorder=Endian.BIG, wordorder=Endian.BIG)
-        pv1 = decoder.decode_16bit_uint()
-        print(f"PV1: {pv1}")
+        result0 = await self.client.read_holding_registers(32002, 1, slave=SLAVE)
+        result1 = await self.client.read_holding_registers(32016, 4, slave=SLAVE)
+        regs = GoodweHTRegs()
+
+        regs.decode(result0.registers, regs.get(RegName.OPER_STATUS).address, regs.get(RegName.OPER_STATUS).address)
+        regs.decode(result1.registers, regs.get(RegName.PV1_U).address, regs.get(RegName.PV2_C).address)
+
+        status = regs.get_value(RegName.OPER_STATUS)
+        print(status)
+
+        pv1_u = regs.get_value(RegName.PV1_U)
+        pv1_c = regs.get_value(RegName.PV1_C)
+
+        print(f"PV1: {pv1_u} {pv1_c}")
 
 
 async def main():
