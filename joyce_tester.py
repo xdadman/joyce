@@ -22,6 +22,7 @@ class Tester:
             SERIAL_STOPBITS: 1,
             SERIAL_PARITY: "N",
         }
+        self.regs = GoodweHTRegs()
 
     async def run(self):
         self.client = AsyncModbusSerialClient(
@@ -42,31 +43,55 @@ class Tester:
         )
         await self.client.connect()
         result0 = await self.client.read_holding_registers(32002, 1, slave=SLAVE)
-        result1 = await self.client.read_holding_registers(32016, 68, slave=SLAVE)
-        regs = GoodweHTRegs()
+        result1 = await self.client.read_holding_registers(32016, self.addr_diff(RegName.PV1_U, RegName.POWER_FACTOR), slave=SLAVE)
+        regs = self.regs
 
         regs.decode(result0.registers, regs.get(RegName.OPER_STATUS).address, regs.get(RegName.OPER_STATUS).address)
-        regs.decode(result1.registers, regs.get(RegName.PV1_U).address, regs.get(RegName.PV24_C).address)
+        regs.decode(result1.registers, regs.get(RegName.PV1_U).address, regs.get(RegName.POWER_FACTOR).address)
 
         status = regs.get_value(RegName.OPER_STATUS)
         print(status)
 
-        pv1_u = regs.get_value(RegName.PV1_U)
-        pv1_c = regs.get_value(RegName.PV1_C)
+        for i in range(1, 25):
+            pv_u_name = getattr(RegName, f"PV{i}_U")
+            pv_c_name = getattr(RegName, f"PV{i}_C")
+            
+            pv_u = regs.get_value(pv_u_name)
+            pv_c = regs.get_value(pv_c_name)
+            
+            print(f"PV{i}: {pv_u:0.1f}V {pv_c:0.2f}A")
 
-        pv2_u = regs.get_value(RegName.PV2_U)
-        pv2_c = regs.get_value(RegName.PV2_C)
+        print("\n--- Additional Registers ---")
+        input_power = regs.get_value(RegName.INPUT_POWER)
+        print(f"Input Power: {input_power:0.2f} kW")
+        
+        grid_ab_voltage = regs.get_value(RegName.GRID_AB_VOLTAGE)
+        grid_bc_voltage = regs.get_value(RegName.GRID_BC_VOLTAGE)
+        grid_ca_voltage = regs.get_value(RegName.GRID_CA_VOLTAGE)
+        print(f"Grid Line Voltages - AB: {grid_ab_voltage:0.1f}V, BC: {grid_bc_voltage:0.1f}V, CA: {grid_ca_voltage:0.1f}V")
+        
+        grid_a_voltage = regs.get_value(RegName.GRID_A_VOLTAGE)
+        grid_b_voltage = regs.get_value(RegName.GRID_B_VOLTAGE)
+        grid_c_voltage = regs.get_value(RegName.GRID_C_VOLTAGE)
+        print(f"Grid Phase Voltages - A: {grid_a_voltage:0.1f}V, B: {grid_b_voltage:0.1f}V, C: {grid_c_voltage:0.1f}V")
+        
+        grid_a_current = regs.get_value(RegName.GRID_A_CURRENT)
+        grid_b_current = regs.get_value(RegName.GRID_B_CURRENT)
+        grid_c_current = regs.get_value(RegName.GRID_C_CURRENT)
+        print(f"Grid Currents - A: {grid_a_current:0.3f}A, B: {grid_b_current:0.3f}A, C: {grid_c_current:0.3f}A")
+        
+        peak_active_power_day = regs.get_value(RegName.PEAK_ACTIVE_POWER_DAY)
+        active_power = regs.get_value(RegName.ACTIVE_POWER)
+        reactive_power = regs.get_value(RegName.REACTIVE_POWER)
+        power_factor = regs.get_value(RegName.POWER_FACTOR)
+        print(f"Peak Active Power (Day): {peak_active_power_day:0.2f} kW")
+        print(f"Active Power: {active_power:0.2f} kW")
+        print(f"Reactive Power: {reactive_power:0.2f} kvar")
+        print(f"Power Factor: {power_factor:0.3f}")
 
-        pv3_u = regs.get_value(RegName.PV3_U)
-        pv3_c = regs.get_value(RegName.PV3_C)
-
-        pv4_u = regs.get_value(RegName.PV4_U)
-        pv4_c = regs.get_value(RegName.PV4_C)
-
-        print(f"PV1: {pv1_u:0.1f} {pv1_c:0.1f}")
-        print(f"PV2: {pv2_u:0.1f} {pv2_c:0.1f}")
-        print(f"PV3: {pv3_u:0.1f} {pv3_c:0.1f}")
-        print(f"PV4: {pv4_u:0.1f} {pv4_c:0.1f}")
+    def addr_diff(self, start_name, end_name):
+        #dif = self.regs.get(end_name).address - self.regs.get(start_name).address
+        return self.regs.get(end_name).address - self.regs.get(start_name).address + self.regs.get(end_name).get_size()
 
 
 async def main():

@@ -70,6 +70,20 @@ class RegName(Enum):
     PV23_C = auto()
     PV24_U = auto()
     PV24_C = auto()
+    INPUT_POWER = auto()
+    GRID_AB_VOLTAGE = auto()
+    GRID_BC_VOLTAGE = auto()
+    GRID_CA_VOLTAGE = auto()
+    GRID_A_VOLTAGE = auto()
+    GRID_B_VOLTAGE = auto()
+    GRID_C_VOLTAGE = auto()
+    GRID_A_CURRENT = auto()
+    GRID_B_CURRENT = auto()
+    GRID_C_CURRENT = auto()
+    PEAK_ACTIVE_POWER_DAY = auto()
+    ACTIVE_POWER = auto()
+    REACTIVE_POWER = auto()
+    POWER_FACTOR = auto()
 
 
 
@@ -226,9 +240,23 @@ class GoodweHTRegs:
             RegName.PV23_C: Reg("PV23_C", "pv23_c", RegType.I16, 32061, 0.01),
             RegName.PV24_U: Reg("PV24_U", "pv24_u", RegType.I16, 32062, 0.1),
             RegName.PV24_C: Reg("PV24_C", "pv24_c", RegType.I16, 32063, 0.01),
+            RegName.INPUT_POWER: Reg("Input Power", "input_power", RegType.I32, 32064, 0.001),
+            RegName.GRID_AB_VOLTAGE: Reg("Grid AB Voltage", "grid_ab_voltage", RegType.U16, 32066, 0.1),
+            RegName.GRID_BC_VOLTAGE: Reg("Grid BC Voltage", "grid_bc_voltage", RegType.U16, 32067, 0.1),
+            RegName.GRID_CA_VOLTAGE: Reg("Grid CA Voltage", "grid_ca_voltage", RegType.U16, 32068, 0.1),
+            RegName.GRID_A_VOLTAGE: Reg("Grid A Voltage", "grid_a_voltage", RegType.U16, 32069, 0.1),
+            RegName.GRID_B_VOLTAGE: Reg("Grid B Voltage", "grid_b_voltage", RegType.U16, 32070, 0.1),
+            RegName.GRID_C_VOLTAGE: Reg("Grid C Voltage", "grid_c_voltage", RegType.U16, 32071, 0.1),
+            RegName.GRID_A_CURRENT: Reg("Grid A Current", "grid_a_current", RegType.I32, 32072, 0.001),
+            RegName.GRID_B_CURRENT: Reg("Grid B Current", "grid_b_current", RegType.I32, 32074, 0.001),
+            RegName.GRID_C_CURRENT: Reg("Grid C Current", "grid_c_current", RegType.I32, 32076, 0.001),
+            RegName.PEAK_ACTIVE_POWER_DAY: Reg("Peak Active Power Day", "peak_active_power_day", RegType.I32, 32078, 0.001),
+            RegName.ACTIVE_POWER: Reg("Active Power", "active_power", RegType.I32, 32080, 0.001),
+            RegName.REACTIVE_POWER: Reg("Reactive Power", "reactive_power", RegType.I32, 32082, 0.001),
+            RegName.POWER_FACTOR: Reg("Power Factor", "power_factor", RegType.I16, 32084, 0.001),
         }
         self.total_regs_count = self.calculate_regs_count()
-        self.last_plant_data_addr = self.get(RegName.PV24_C).address
+        self.last_plant_data_addr = self.get(RegName.POWER_FACTOR).address
 
     def set_value(self, name: RegName, value):
         reg: Reg = self.regs[name]
@@ -262,6 +290,7 @@ class GoodweHTRegs:
         decoder = BinaryPayloadDecoder.fromRegisters(values, byteorder=Endian.BIG, wordorder=Endian.BIG)
         for reg in self.regs.values():
             if address_from <= reg.address <= address_to:
+                print(reg)
                 reg.decode(decoder)
                 reg.print()
 
