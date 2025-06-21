@@ -33,6 +33,15 @@ class Tester:
             bucket="ht"
         )
 
+    async def start_socat(self):
+        print("Starting socat")
+        #cmd = ["socat", "-d", "-d", "PTY,link=/tmp/ptyp0,raw,echo=0,b230400", "PTY,link=/tmp/ttyp0,raw,echo=0,b230400"]
+        cmd = ["socat", "PTY,link=/tmp/ttyVirtual,raw,echo=0", "TCP:10.76.1.33:2000"]
+        import subprocess
+        subprocess.Popen(cmd)
+        await asyncio.sleep(2)
+        print("Started socat")
+
     async def run(self):
         self.client = AsyncModbusSerialClient(
             port=self.cfg[SERIAL_PORT],  # serial port
@@ -50,6 +59,8 @@ class Tester:
             stopbits=self.cfg[SERIAL_STOPBITS],
             #    handle_local_echo=False,
         )
+        await self.start_socat()
+
         await self.client.connect()
         regs = self.regs
         
