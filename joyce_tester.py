@@ -2,7 +2,7 @@ import asyncio
 
 from pymodbus.client import AsyncModbusSerialClient
 from pymodbus.constants import Endian
-from pymodbus.payload import BinaryPayloadDecoder
+from pymodbus.payload import BinaryPayloadDecoder, BinaryPayloadBuilder
 
 from registers_goodwe_ht import GoodweHTRegs, RegName
 from influx import InfluxWriter
@@ -75,6 +75,19 @@ class Tester:
                 result2 = await self.client.read_holding_registers(32106, self.addr_diff(RegName.CUMULATIVE_POWER_GENERATION, RegName.POWER_GENERATION_YEAR), slave=SLAVE)
                 #result3 = await self.client.read_holding_registers(32180, self.addr_diff(RegName.ACTIVE_POWER_CALCULATION, RegName.ACTIVE_POWER_CALCULATION), slave=SLAVE)
                 result_rtc = await self.client.read_holding_registers(41313, self.addr_diff(RegName.RTC_YEAR_MONTH, RegName.RTC_MINUTE_SECOND), slave=SLAVE)
+
+                write_adjust = False
+
+                if write_adjust:
+                    builder = BinaryPayloadBuilder(byteorder=Endian.BIG, wordorder=Endian.BIG)
+                    builder.add_16bit_uint(110)
+                    registers = builder.to_registers()
+                    await self.client.write_registers(41480, registers, slave=SLAVE)
+
+
+                result_adjust = await self.client.read_holding_registers(41480, 1, slave=SLAVE)
+                decoder = BinaryPayloadDecoder.fromRegisters(result_adjust.registers, byteorder=Endian.BIG, wordorder=Endian.BIG)
+                power_adjust = decoder.decode_16bit_uint()
 
 
                 regs.decode(result0.registers, regs.get(RegName.OPER_STATUS).address, regs.get(RegName.OPER_STATUS).address)
@@ -162,7 +175,9 @@ class Tester:
                 
                 print(f"Device RTC: {full_year:04d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:02d}")
                 print(f"Raw Values - Year/Month: 0x{rtc_year_month:04X}, Day/Hour: 0x{rtc_day_hour:04X}, Minute/Second: 0x{rtc_minute_second:04X}")
-        
+
+                print(f"Power adjust {power_adjust}")
+
                 # Write data to InfluxDB
                 print("\n--- Writing to InfluxDB ---")
                 try:
