@@ -4,3 +4,4 @@ backup
 venv
 logs
 socat.sh
+config.py

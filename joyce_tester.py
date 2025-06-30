@@ -1,9 +1,11 @@
 import asyncio
+from typing import List
 
 from pymodbus.client import AsyncModbusSerialClient
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadDecoder, BinaryPayloadBuilder
 
+from config import CFG
 from registers_goodwe_ht import GoodweHTRegs, RegName
 from influx import InfluxWriter
 
@@ -12,19 +14,26 @@ SERIAL_BAUDRATE = "SERIAL_BAUDRATE"
 SERIAL_STOPBITS = "SERIAL_STOPBITS"
 SERIAL_PARITY = "SERIAL_PARITY"
 
-SLAVE = 247
+class Invertor:
+    def __init__(self, slave_address: int):
+        self.slave_address = slave_address
+
+    def __str__(self):
+        return f"Slave: {self.slave_address}"
+
 
 class Tester:
-    def __init__(self):
+    def __init__(self, serial_device: str, invertors: List[Invertor] ):
         self.cfg = {
             #SERIAL_PORT: "/dev/ttyUSB0",
-            SERIAL_PORT: "/tmp/ttyVirtual",
+            #SERIAL_PORT: "/tmp/ttyVirtual",
+            SERIAL_PORT: serial_device,
             SERIAL_BAUDRATE: 9600,
             SERIAL_STOPBITS: 1,
             SERIAL_PARITY: "N",
         }
-        self.regs = GoodweHTRegs()
-        
+        self.invertors = invertors
+
         # InfluxDB configuration
         self.influx_writer = InfluxWriter(
             url="http://10.76.0.1:8087",
@@ -32,6 +41,7 @@ class Tester:
             org="myorg",
             bucket="ht"
         )
+        self.regs = GoodweHTRegs() # only for addressing purposes, not for data
 
     async def start_socat(self):
         print("Starting socat")
@@ -45,149 +55,36 @@ class Tester:
     async def run(self):
         self.client = AsyncModbusSerialClient(
             port=self.cfg[SERIAL_PORT],  # serial port
-            # Common optional paramers:
-            #    framer=ModbusRtuFramer,
-            #    timeout=10,
-            #    retries=3,
-            #    retry_on_empty=False,
-            #    close_comm_on_error=False,.
-            #    strict=True,
-            # Serial setup parameters
             baudrate=self.cfg[SERIAL_BAUDRATE],
             bytesize=8,
             parity=self.cfg[SERIAL_PARITY],
             stopbits=self.cfg[SERIAL_STOPBITS],
-            #    handle_local_echo=False,
         )
         await self.start_socat()
 
         await self.client.connect()
-        regs = self.regs
-        
-        loop_count = 0
+
         while True:
-            loop_count += 1
-            print(f"\n=== Reading cycle {loop_count} ===")
-            
+            print(f"\n=== Reading cycle ===")
+
             try:
-                result0 = await self.client.read_holding_registers(32002, 1, slave=SLAVE)
-                result1 = await self.client.read_holding_registers(32016, self.addr_diff(RegName.PV1_U, RegName.INTERNAL_TEMPERATURE), slave=SLAVE)
-                result2 = await self.client.read_holding_registers(32106, self.addr_diff(RegName.CUMULATIVE_POWER_GENERATION, RegName.POWER_GENERATION_YEAR), slave=SLAVE)
-                #result3 = await self.client.read_holding_registers(32180, self.addr_diff(RegName.ACTIVE_POWER_CALCULATION, RegName.ACTIVE_POWER_CALCULATION), slave=SLAVE)
-                result_rtc = await self.client.read_holding_registers(41313, self.addr_diff(RegName.RTC_YEAR_MONTH, RegName.RTC_MINUTE_SECOND), slave=SLAVE)
+                for invertor in self.invertors:
+                    print(f"Invertor round: {invertor}")
+                    try:
+                        regs = await self.read_invertor_regs(invertor)
 
-                write_adjust = False
+                        self.print_invertor_regs(regs)
 
-                if write_adjust:
-                    builder = BinaryPayloadBuilder(byteorder=Endian.BIG, wordorder=Endian.BIG)
-                    builder.add_16bit_uint(110)
-                    registers = builder.to_registers()
-                    await self.client.write_registers(41480, registers, slave=SLAVE)
-
-
-                result_adjust = await self.client.read_holding_registers(41480, 1, slave=SLAVE)
-                decoder = BinaryPayloadDecoder.fromRegisters(result_adjust.registers, byteorder=Endian.BIG, wordorder=Endian.BIG)
-                power_adjust = decoder.decode_16bit_uint()
-
-
-                regs.decode(result0.registers, regs.get(RegName.OPER_STATUS).address, regs.get(RegName.OPER_STATUS).address)
-                regs.decode(result1.registers, regs.get(RegName.PV1_U).address, regs.get(RegName.INTERNAL_TEMPERATURE).address)
-                regs.decode(result2.registers, regs.get(RegName.CUMULATIVE_POWER_GENERATION).address, regs.get(RegName.POWER_GENERATION_YEAR).address)
-                #regs.decode(result3.registers, regs.get(RegName.ACTIVE_POWER_CALCULATION).address, regs.get(RegName.ACTIVE_POWER_CALCULATION).address)
-                regs.decode(result_rtc.registers, regs.get(RegName.RTC_YEAR_MONTH).address, regs.get(RegName.RTC_MINUTE_SECOND).address)
-
-                status = regs.get_value(RegName.OPER_STATUS)
-                print(status)
-
-                for i in range(1, 25):
-                    pv_u_name = getattr(RegName, f"PV{i}_U")
-                    pv_c_name = getattr(RegName, f"PV{i}_C")
-                    
-                    pv_u = regs.get_value(pv_u_name)
-                    pv_c = regs.get_value(pv_c_name)
-                    
-                    print(f"PV{i}: {pv_u:0.1f}V {pv_c:0.2f}A")
-
-                print("\n--- Additional Registers ---")
-                input_power = regs.get_value(RegName.INPUT_POWER)
-                print(f"Input Power: {input_power:0.2f} kW")
-        
-                grid_ab_voltage = regs.get_value(RegName.GRID_AB_VOLTAGE)
-                grid_bc_voltage = regs.get_value(RegName.GRID_BC_VOLTAGE)
-                grid_ca_voltage = regs.get_value(RegName.GRID_CA_VOLTAGE)
-                print(f"Grid Line Voltages - AB: {grid_ab_voltage:0.1f}V, BC: {grid_bc_voltage:0.1f}V, CA: {grid_ca_voltage:0.1f}V")
-        
-                grid_a_voltage = regs.get_value(RegName.GRID_A_VOLTAGE)
-                grid_b_voltage = regs.get_value(RegName.GRID_B_VOLTAGE)
-                grid_c_voltage = regs.get_value(RegName.GRID_C_VOLTAGE)
-                print(f"Grid Phase Voltages - A: {grid_a_voltage:0.1f}V, B: {grid_b_voltage:0.1f}V, C: {grid_c_voltage:0.1f}V")
-        
-                grid_a_current = regs.get_value(RegName.GRID_A_CURRENT)
-                grid_b_current = regs.get_value(RegName.GRID_B_CURRENT)
-                grid_c_current = regs.get_value(RegName.GRID_C_CURRENT)
-                print(f"Grid Currents - A: {grid_a_current:0.3f}A, B: {grid_b_current:0.3f}A, C: {grid_c_current:0.3f}A")
-        
-                peak_active_power_day = regs.get_value(RegName.PEAK_ACTIVE_POWER_DAY)
-                active_power = regs.get_value(RegName.ACTIVE_POWER)
-                reactive_power = regs.get_value(RegName.REACTIVE_POWER)
-                power_factor = regs.get_value(RegName.POWER_FACTOR)
-                print(f"Peak Active Power (Day): {peak_active_power_day:0.2f} kW")
-                print(f"Active Power: {active_power:0.2f} kW")
-                print(f"Reactive Power: {reactive_power:0.2f} kvar")
-                print(f"Power Factor: {power_factor:0.3f}")
-        
-                print("\n--- Power Quality & Efficiency ---")
-                grid_frequency = regs.get_value(RegName.GRID_FREQUENCY)
-                inverter_efficiency = regs.get_value(RegName.INVERTER_EFFICIENCY)
-                internal_temperature = regs.get_value(RegName.INTERNAL_TEMPERATURE)
-                print(f"Grid Frequency: {grid_frequency:0.2f} Hz")
-                print(f"Inverter Efficiency: {inverter_efficiency:0.2f} %")
-                print(f"Internal Temperature: {internal_temperature:0.1f} °C")
-        
-                print("\n--- Energy Generation ---")
-                cumulative_power_generation = regs.get_value(RegName.CUMULATIVE_POWER_GENERATION)
-                power_generation_day = regs.get_value(RegName.POWER_GENERATION_DAY)
-                power_generation_month = regs.get_value(RegName.POWER_GENERATION_MONTH)
-                power_generation_year = regs.get_value(RegName.POWER_GENERATION_YEAR)
-                print(f"Cumulative Power Generation: {cumulative_power_generation:0.2f} kWh")
-                print(f"Power Generation (Day): {power_generation_day:0.2f} kWh")
-                print(f"Power Generation (Month): {power_generation_month:0.2f} kWh")
-                print(f"Power Generation (Year): {power_generation_year:0.2f} kWh")
-        
-                print("\n--- Active Power Calculation ---")
-                active_power_calculation = regs.get_value(RegName.ACTIVE_POWER_CALCULATION)
-                print(f"Active Power Calculation: {active_power_calculation:0.2f} kW")
-        
-                print("\n--- Real-Time Clock (RTC) ---")
-                rtc_year_month = regs.get_value(RegName.RTC_YEAR_MONTH)
-                rtc_day_hour = regs.get_value(RegName.RTC_DAY_HOUR)
-                rtc_minute_second = regs.get_value(RegName.RTC_MINUTE_SECOND)
-                
-                year = (rtc_year_month >> 8) & 0xFF
-                month = rtc_year_month & 0xFF
-                day = (rtc_day_hour >> 8) & 0xFF
-                hour = rtc_day_hour & 0xFF
-                minute = (rtc_minute_second >> 8) & 0xFF
-                second = rtc_minute_second & 0xFF
-                
-                # Convert 2-digit year to 4-digit (assuming 20xx)
-                full_year = 2000 + year if year >= 15 else 2000 + year
-                
-                print(f"Device RTC: {full_year:04d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:02d}")
-                print(f"Raw Values - Year/Month: 0x{rtc_year_month:04X}, Day/Hour: 0x{rtc_day_hour:04X}, Minute/Second: 0x{rtc_minute_second:04X}")
-
-                print(f"Power adjust {power_adjust}")
-
-                # Write data to InfluxDB
-                print("\n--- Writing to InfluxDB ---")
-                try:
-                    self.influx_writer.write_regs(regs)
-                    print("Data successfully written to InfluxDB")
-                except Exception as e:
-                    print(f"Failed to write to InfluxDB: {e}")
+                        try:
+                            self.write_influx_invertor_regs(regs)
+                            print("Data successfully written to InfluxDB")
+                        except Exception as e:
+                            print(f"Failed to write to InfluxDB: {e}")
+                    except Exception as e:
+                        print(f"Failed to process invertor {invertor}: {e}")
                     
             except Exception as e:
-                print(f"Error in reading cycle {loop_count}: {e}")
+                print(f"Error in reading cycle: {e}")
                 
             print(f"Waiting 5 seconds before next cycle...")
             await asyncio.sleep(2 * 60)
@@ -197,9 +94,134 @@ class Tester:
         print(f"addre diff {dif}")
         return self.regs.get(end_name).address - self.regs.get(start_name).address + self.regs.get(end_name).get_size()
 
+    async def read_invertor_regs(self, invertor: Invertor) -> GoodweHTRegs:
+        regs = GoodweHTRegs()
+        slave = invertor.slave_address
+        result0 = await self.client.read_holding_registers(32002, 1, slave=slave)
+        result1 = await self.client.read_holding_registers(32016, self.addr_diff(RegName.PV1_U, RegName.INTERNAL_TEMPERATURE), slave=slave)
+        result2 = await self.client.read_holding_registers(32106, self.addr_diff(RegName.CUMULATIVE_POWER_GENERATION, RegName.POWER_GENERATION_YEAR), slave=slave)
+        # result3 = await self.client.read_holding_registers(32180, self.addr_diff(RegName.ACTIVE_POWER_CALCULATION, RegName.ACTIVE_POWER_CALCULATION), slave=slave)
+        result_rtc = await self.client.read_holding_registers(41313, self.addr_diff(RegName.RTC_YEAR_MONTH, RegName.RTC_MINUTE_SECOND), slave=slave)
+
+        write_adjust = False
+
+        if write_adjust:
+            builder = BinaryPayloadBuilder(byteorder=Endian.BIG, wordorder=Endian.BIG)
+            builder.add_16bit_uint(110)
+            registers = builder.to_registers()
+            await self.client.write_registers(41480, registers, slave=slave)
+
+        result_adjust = await self.client.read_holding_registers(41480, 1, slave=slave)
+        decoder = BinaryPayloadDecoder.fromRegisters(result_adjust.registers, byteorder=Endian.BIG,
+                                                     wordorder=Endian.BIG)
+        power_adjust = decoder.decode_16bit_uint()
+        print(f"Power adjust {power_adjust}")
+
+        regs.decode(result0.registers, regs.get(RegName.OPER_STATUS).address, regs.get(RegName.OPER_STATUS).address)
+        regs.decode(result1.registers, regs.get(RegName.PV1_U).address, regs.get(RegName.INTERNAL_TEMPERATURE).address)
+        regs.decode(result2.registers, regs.get(RegName.CUMULATIVE_POWER_GENERATION).address, regs.get(RegName.POWER_GENERATION_YEAR).address)
+        # regs.decode(result3.registers, regs.get(RegName.ACTIVE_POWER_CALCULATION).address, regs.get(RegName.ACTIVE_POWER_CALCULATION).address)
+        regs.decode(result_rtc.registers, regs.get(RegName.RTC_YEAR_MONTH).address, regs.get(RegName.RTC_MINUTE_SECOND).address)
+        return regs
+
+    def print_invertor_regs(self, regs: GoodweHTRegs):
+        status = regs.get_value(RegName.OPER_STATUS)
+        print(status)
+
+        for i in range(1, 25):
+            pv_u_name = getattr(RegName, f"PV{i}_U")
+            pv_c_name = getattr(RegName, f"PV{i}_C")
+
+            pv_u = regs.get_value(pv_u_name)
+            pv_c = regs.get_value(pv_c_name)
+
+            print(f"PV{i}: {pv_u:0.1f}V {pv_c:0.2f}A")
+
+        print("\n--- Additional Registers ---")
+        input_power = regs.get_value(RegName.INPUT_POWER)
+        print(f"Input Power: {input_power:0.2f} kW")
+
+        grid_ab_voltage = regs.get_value(RegName.GRID_AB_VOLTAGE)
+        grid_bc_voltage = regs.get_value(RegName.GRID_BC_VOLTAGE)
+        grid_ca_voltage = regs.get_value(RegName.GRID_CA_VOLTAGE)
+        print(
+            f"Grid Line Voltages - AB: {grid_ab_voltage:0.1f}V, BC: {grid_bc_voltage:0.1f}V, CA: {grid_ca_voltage:0.1f}V")
+
+        grid_a_voltage = regs.get_value(RegName.GRID_A_VOLTAGE)
+        grid_b_voltage = regs.get_value(RegName.GRID_B_VOLTAGE)
+        grid_c_voltage = regs.get_value(RegName.GRID_C_VOLTAGE)
+        print(f"Grid Phase Voltages - A: {grid_a_voltage:0.1f}V, B: {grid_b_voltage:0.1f}V, C: {grid_c_voltage:0.1f}V")
+
+        grid_a_current = regs.get_value(RegName.GRID_A_CURRENT)
+        grid_b_current = regs.get_value(RegName.GRID_B_CURRENT)
+        grid_c_current = regs.get_value(RegName.GRID_C_CURRENT)
+        print(f"Grid Currents - A: {grid_a_current:0.3f}A, B: {grid_b_current:0.3f}A, C: {grid_c_current:0.3f}A")
+
+        peak_active_power_day = regs.get_value(RegName.PEAK_ACTIVE_POWER_DAY)
+        active_power = regs.get_value(RegName.ACTIVE_POWER)
+        reactive_power = regs.get_value(RegName.REACTIVE_POWER)
+        power_factor = regs.get_value(RegName.POWER_FACTOR)
+        print(f"Peak Active Power (Day): {peak_active_power_day:0.2f} kW")
+        print(f"Active Power: {active_power:0.2f} kW")
+        print(f"Reactive Power: {reactive_power:0.2f} kvar")
+        print(f"Power Factor: {power_factor:0.3f}")
+
+        print("\n--- Power Quality & Efficiency ---")
+        grid_frequency = regs.get_value(RegName.GRID_FREQUENCY)
+        inverter_efficiency = regs.get_value(RegName.INVERTER_EFFICIENCY)
+        internal_temperature = regs.get_value(RegName.INTERNAL_TEMPERATURE)
+        print(f"Grid Frequency: {grid_frequency:0.2f} Hz")
+        print(f"Inverter Efficiency: {inverter_efficiency:0.2f} %")
+        print(f"Internal Temperature: {internal_temperature:0.1f} °C")
+
+        print("\n--- Energy Generation ---")
+        cumulative_power_generation = regs.get_value(RegName.CUMULATIVE_POWER_GENERATION)
+        power_generation_day = regs.get_value(RegName.POWER_GENERATION_DAY)
+        power_generation_month = regs.get_value(RegName.POWER_GENERATION_MONTH)
+        power_generation_year = regs.get_value(RegName.POWER_GENERATION_YEAR)
+        print(f"Cumulative Power Generation: {cumulative_power_generation:0.2f} kWh")
+        print(f"Power Generation (Day): {power_generation_day:0.2f} kWh")
+        print(f"Power Generation (Month): {power_generation_month:0.2f} kWh")
+        print(f"Power Generation (Year): {power_generation_year:0.2f} kWh")
+
+        print("\n--- Active Power Calculation ---")
+        active_power_calculation = regs.get_value(RegName.ACTIVE_POWER_CALCULATION)
+        print(f"Active Power Calculation: {active_power_calculation:0.2f} kW")
+
+        print("\n--- Real-Time Clock (RTC) ---")
+        rtc_year_month = regs.get_value(RegName.RTC_YEAR_MONTH)
+        rtc_day_hour = regs.get_value(RegName.RTC_DAY_HOUR)
+        rtc_minute_second = regs.get_value(RegName.RTC_MINUTE_SECOND)
+
+        year = (rtc_year_month >> 8) & 0xFF
+        month = rtc_year_month & 0xFF
+        day = (rtc_day_hour >> 8) & 0xFF
+        hour = rtc_day_hour & 0xFF
+        minute = (rtc_minute_second >> 8) & 0xFF
+        second = rtc_minute_second & 0xFF
+
+        # Convert 2-digit year to 4-digit (assuming 20xx)
+        full_year = 2000 + year if year >= 15 else 2000 + year
+
+        print(f"Device RTC: {full_year:04d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:02d}")
+        print(
+            f"Raw Values - Year/Month: 0x{rtc_year_month:04X}, Day/Hour: 0x{rtc_day_hour:04X}, Minute/Second: 0x{rtc_minute_second:04X}")
+
+    def write_influx_invertor_regs(self, regs: GoodweHTRegs):
+        self.influx_writer.write_regs(regs)
+
+
+def invertors_from_cfg(cfg: dict) -> List[Invertor]:
+    invertors = []
+    for slave in cfg["modbus_slaves"]:
+        invertors.append(Invertor(slave))
+    return invertors
+
 
 async def main():
-    test = Tester()
+    cfg: dict = CFG
+    invertors: List[Invertor] = invertors_from_cfg(cfg)
+    test = Tester(cfg['serial_device'], invertors)
     await test.run()
 
 
