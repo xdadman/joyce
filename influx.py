@@ -2,6 +2,8 @@ from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 import logging
 from datetime import datetime, timezone
+
+from invertor import Invertor
 from registers_goodwe_ht import GoodweHTRegs, RegName
 
 log = logging.getLogger(__name__)
@@ -15,7 +17,7 @@ class InfluxWriter:
         self.client = InfluxDBClient(url=url, token=token, org=org)
         self.write_api = self.client.write_api(write_options=SYNCHRONOUS)
         
-    def write_regs(self, regs: GoodweHTRegs):
+    def write_regs(self, regs: GoodweHTRegs, invertor: Invertor):
         """Write PV power values to InfluxDB measurement 'power'"""
         try:
             points = []
@@ -32,6 +34,7 @@ class InfluxWriter:
                 
                 # Create power point for each PV
                 power_point = Point("power") \
+                    .tag("invertor_no", f"inv{invertor.invertor_no}") \
                     .tag("pv", f"pv{i}") \
                     .field("value", pv_power) \
                     .time(timestamp)
@@ -47,6 +50,7 @@ class InfluxWriter:
             for power_type, reg_name in additional_powers:
                 power_value = regs.get_value(reg_name)
                 power_point = Point("power") \
+                    .tag("invertor_no", f"inv{invertor.invertor_no}") \
                     .tag("pv", power_type) \
                     .field("value", power_value) \
                     .time(timestamp)
@@ -62,6 +66,7 @@ class InfluxWriter:
             for phase_name, reg_name in grid_voltages:
                 voltage_value = regs.get_value(reg_name)
                 voltage_point = Point("grid_voltages") \
+                    .tag("invertor_no", f"inv{invertor.invertor_no}") \
                     .tag("phase", phase_name) \
                     .field("value", voltage_value) \
                     .time(timestamp)
@@ -77,6 +82,7 @@ class InfluxWriter:
             for phase_name, reg_name in grid_currents:
                 current_value = regs.get_value(reg_name)
                 current_point = Point("grid_current") \
+                    .tag("invertor_no", f"inv{invertor.invertor_no}") \
                     .tag("phase", phase_name) \
                     .field("value", current_value) \
                     .time(timestamp)
@@ -84,6 +90,7 @@ class InfluxWriter:
             
             # Write stats data as a single point with multiple fields
             stats_point = Point("stats") \
+                .tag("invertor_no", f"inv{invertor.invertor_no}") \
                 .field("power_factor", regs.get_value(RegName.POWER_FACTOR)) \
                 .field("grid_frequency", regs.get_value(RegName.GRID_FREQUENCY)) \
                 .field("inverter_efficiency", regs.get_value(RegName.INVERTER_EFFICIENCY)) \

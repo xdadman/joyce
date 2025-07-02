@@ -1,11 +1,14 @@
 import asyncio
+import logging
 from typing import List
 
 from pymodbus.client import AsyncModbusSerialClient
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadDecoder, BinaryPayloadBuilder
 
+from common import setup_logging
 from config import Config
+from invertor import Invertor
 from registers_goodwe_ht import GoodweHTRegs, RegName
 from influx import InfluxWriter
 from rtu_monitor import RtuMonitor
@@ -14,13 +17,6 @@ SERIAL_PORT = "SERIAL_PORT"
 SERIAL_BAUDRATE = "SERIAL_BAUDRATE"
 SERIAL_STOPBITS = "SERIAL_STOPBITS"
 SERIAL_PARITY = "SERIAL_PARITY"
-
-class Invertor:
-    def __init__(self, slave_address: int):
-        self.slave_address = slave_address
-
-    def __str__(self):
-        return f"Slave: {self.slave_address}"
 
 
 class GoodweHTSet:
@@ -33,14 +29,16 @@ class GoodweHTSet:
 
     def invertors_from_cfg(self) -> List[Invertor]:
         invertors = []
+        invertor_no = 1
         for slave in self.config.modbus_slaves:
-            invertors.append(Invertor(slave))
+            invertors.append(Invertor(invertor_no, slave))
+            invertor_no += 1
         return invertors
 
     async def start_socat(self):
         print("Starting socat")
-        #cmd = ["socat", "-d", "-d", "PTY,link=/tmp/ptyp0,raw,echo=0,b230400", "PTY,link=/tmp/ttyp0,raw,echo=0,b230400"]
-        cmd = ["socat", "PTY,link=/tmp/ttyVirtual,raw,echo=0", "TCP:10.76.1.33:2000"]
+        cmd = ["socat", "PTY,link=/tmp/ttyVirtual,raw,echo=0", "TCP:10.71.0.4:2000"]
+        cmd = ["socat", "PTY,link=/tmp/ttyVirtual,raw,echo=0", "TCP:10.76.1.48:2000"]
         import subprocess
         subprocess.Popen(cmd)
         await asyncio.sleep(2)
@@ -65,8 +63,6 @@ class GoodweHTSet:
             regulation = None
             try:
                 regulation = await self.rtu_monitor.read_requested_regulation()
-                await asyncio.sleep(3)
-               
                 pass
             except Exception as e:
                 print(f"Exception getting RTU regulation: {e}")
@@ -81,14 +77,13 @@ class GoodweHTSet:
                         self.print_invertor_regs(regs)
 
                         try:
-                            self.write_influx_invertor_regs(regs)
+                            self.write_influx_invertor_regs(regs, invertor)
                             print("Data successfully written to InfluxDB")
                         except Exception as e:
                             print(f"Failed to write to InfluxDB: {e}")
                     except Exception as e:
                         print(f"Failed to process invertor {invertor}: {e}")
-                    await asyncio.sleep(1)
-                    
+
             except Exception as e:
                 print(f"Error in reading cycle: {e}")
                 
@@ -213,15 +208,16 @@ class GoodweHTSet:
         print(
             f"Raw Values - Year/Month: 0x{rtc_year_month:04X}, Day/Hour: 0x{rtc_day_hour:04X}, Minute/Second: 0x{rtc_minute_second:04X}")
 
-    def write_influx_invertor_regs(self, regs: GoodweHTRegs):
+    def write_influx_invertor_regs(self, regs: GoodweHTRegs, invertor: Invertor):
         if self.influx_writer:
-            self.influx_writer.write_regs(regs)
+            self.influx_writer.write_regs(regs, invertor)
 
 
 
 
 
 async def main():
+    setup_logging(log_level=logging.INFO)
     config = Config()
     influx_writer = InfluxWriter(
         url="http://10.76.0.1:8087",
