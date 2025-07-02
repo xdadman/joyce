@@ -21,7 +21,7 @@ class RtuMonitor:
 
         try:
             inputs = await self.adam.read_digital_inputs(count=4)
-            #print(f"inputs: {inputs}")
+            print(f"inputs: {inputs}")
             return inputs[0] + inputs[1] * 2 + inputs[2] * 4 + inputs[3] * 8
         except Exception as e:
             print(f"Error while getting inputs from ADAM: {e}")

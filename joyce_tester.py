@@ -64,7 +64,9 @@ class GoodweHTSet:
 
             regulation = None
             try:
-                #regulation = await self.rtu_monitor.read_requested_regulation()
+                regulation = await self.rtu_monitor.read_requested_regulation()
+                await asyncio.sleep(3)
+               
                 pass
             except Exception as e:
                 print(f"Exception getting RTU regulation: {e}")
