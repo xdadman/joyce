@@ -5,7 +5,7 @@
 # Example: ./scan_subnet.sh 10.72.3 80
 
 # Default values
-SUBNET="${1:-10.72.3}"
+SUBNET="${1:-10.0.0}"
 PORT="${2:-80}"
 
 echo "Scanning subnet: ${SUBNET}.1-254"

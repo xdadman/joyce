@@ -64,7 +64,8 @@ class GoodweHTSet:
 
             regulation = None
             try:
-                regulation = await self.rtu_monitor.read_requested_regulation()
+                #regulation = await self.rtu_monitor.read_requested_regulation()
+                pass
             except Exception as e:
                 print(f"Exception getting RTU regulation: {e}")
             print(f"Regulation for this cycle: {regulation}")
@@ -84,12 +85,13 @@ class GoodweHTSet:
                             print(f"Failed to write to InfluxDB: {e}")
                     except Exception as e:
                         print(f"Failed to process invertor {invertor}: {e}")
+                    await asyncio.sleep(1)
                     
             except Exception as e:
                 print(f"Error in reading cycle: {e}")
                 
             print(f"Waiting 5 seconds before next cycle...")
-            await asyncio.sleep(2 * 60)
+            await asyncio.sleep(5)
 
     def addr_diff(self, start_name, end_name):
         dif = self.regs.get(end_name).address - self.regs.get(start_name).address
