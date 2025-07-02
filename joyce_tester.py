@@ -5,9 +5,10 @@ from pymodbus.client import AsyncModbusSerialClient
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadDecoder, BinaryPayloadBuilder
 
-from config import CFG
+from config import Config
 from registers_goodwe_ht import GoodweHTRegs, RegName
 from influx import InfluxWriter
+from rtu_monitor import RtuMonitor
 
 SERIAL_PORT = "SERIAL_PORT"
 SERIAL_BAUDRATE = "SERIAL_BAUDRATE"
@@ -22,26 +23,19 @@ class Invertor:
         return f"Slave: {self.slave_address}"
 
 
-class Tester:
-    def __init__(self, serial_device: str, invertors: List[Invertor] ):
-        self.cfg = {
-            #SERIAL_PORT: "/dev/ttyUSB0",
-            #SERIAL_PORT: "/tmp/ttyVirtual",
-            SERIAL_PORT: serial_device,
-            SERIAL_BAUDRATE: 9600,
-            SERIAL_STOPBITS: 1,
-            SERIAL_PARITY: "N",
-        }
-        self.invertors = invertors
-
-        # InfluxDB configuration
-        self.influx_writer = InfluxWriter(
-            url="http://10.76.0.1:8087",
-            token="token",
-            org="myorg",
-            bucket="ht"
-        )
+class GoodweHTSet:
+    def __init__(self, config: Config, influx_writer: InfluxWriter, rtu_monitor: RtuMonitor):
+        self.config = config
+        self.invertors: List[Invertor] = self.invertors_from_cfg()
+        self.influx_writer = influx_writer
+        self.rtu_monitor: RtuMonitor = rtu_monitor
         self.regs = GoodweHTRegs() # only for addressing purposes, not for data
+
+    def invertors_from_cfg(self) -> List[Invertor]:
+        invertors = []
+        for slave in self.config.modbus_slaves:
+            invertors.append(Invertor(slave))
+        return invertors
 
     async def start_socat(self):
         print("Starting socat")
@@ -54,18 +48,26 @@ class Tester:
 
     async def run(self):
         self.client = AsyncModbusSerialClient(
-            port=self.cfg[SERIAL_PORT],  # serial port
-            baudrate=self.cfg[SERIAL_BAUDRATE],
+            port=self.config.serial_device,
+            baudrate=9600,
             bytesize=8,
-            parity=self.cfg[SERIAL_PARITY],
-            stopbits=self.cfg[SERIAL_STOPBITS],
+            parity="N",
+            stopbits=1,
         )
-        await self.start_socat()
+        if self.config.serial_device == "/tmp/ttyVirtual":
+            await self.start_socat()
 
         await self.client.connect()
 
         while True:
             print(f"\n=== Reading cycle ===")
+
+            regulation = None
+            try:
+                regulation = await self.rtu_monitor.read_requested_regulation()
+            except Exception as e:
+                print(f"Exception getting RTU regulation: {e}")
+            print(f"Regulation for this cycle: {regulation}")
 
             try:
                 for invertor in self.invertors:
@@ -208,20 +210,23 @@ class Tester:
             f"Raw Values - Year/Month: 0x{rtc_year_month:04X}, Day/Hour: 0x{rtc_day_hour:04X}, Minute/Second: 0x{rtc_minute_second:04X}")
 
     def write_influx_invertor_regs(self, regs: GoodweHTRegs):
-        self.influx_writer.write_regs(regs)
+        if self.influx_writer:
+            self.influx_writer.write_regs(regs)
 
 
-def invertors_from_cfg(cfg: dict) -> List[Invertor]:
-    invertors = []
-    for slave in cfg["modbus_slaves"]:
-        invertors.append(Invertor(slave))
-    return invertors
+
 
 
 async def main():
-    cfg: dict = CFG
-    invertors: List[Invertor] = invertors_from_cfg(cfg)
-    test = Tester(cfg['serial_device'], invertors)
+    config = Config()
+    influx_writer = InfluxWriter(
+        url="http://10.76.0.1:8087",
+        token="token",
+        org="myorg",
+        bucket="ht"
+    )
+    rtu_monitor = RtuMonitor(config.adam_ip)
+    test = GoodweHTSet(config, influx_writer, rtu_monitor)
     await test.run()
 
 
