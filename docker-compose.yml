@@ -1,0 +1,16 @@
+services:
+  goodwe_monitor:
+    container_name: goodwe_monitor
+    image: goodwe_monitor:1.0.0
+    restart: unless-stopped
+    user: "1000"
+    privileged: true
+    environment:
+      - TZ=Europe/Prague
+    devices:
+      - /dev:/dev
+    #ports:
+    #  - "5000:5000"
+    volumes:
+      - ./logs:/usr/src/app/logs
+      - ./db:/usr/src/app/db

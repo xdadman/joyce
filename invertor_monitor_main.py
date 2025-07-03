@@ -13,11 +13,6 @@ from registers_goodwe_ht import GoodweHTRegs, RegName
 from influx import InfluxWriter
 from rtu_monitor import RtuMonitor
 
-SERIAL_PORT = "SERIAL_PORT"
-SERIAL_BAUDRATE = "SERIAL_BAUDRATE"
-SERIAL_STOPBITS = "SERIAL_STOPBITS"
-SERIAL_PARITY = "SERIAL_PARITY"
-
 
 class GoodweHTSet:
     def __init__(self, config: Config, influx_writer: InfluxWriter, rtu_monitor: RtuMonitor):
@@ -211,8 +206,6 @@ class GoodweHTSet:
     def write_influx_invertor_regs(self, regs: GoodweHTRegs, invertor: Invertor):
         if self.influx_writer:
             self.influx_writer.write_regs(regs, invertor)
-
-
 
 
 
