@@ -315,7 +315,7 @@ class GoodweHTRegs:
             if address_from <= reg.address <= address_to:
                 print(reg)
                 reg.decode(decoder)
-                reg.print()
+                #reg.print()
 
     def encode(self, address_from: int, address_to: int) -> list:
         builder = BinaryPayloadBuilder(byteorder=Endian.BIG, wordorder=Endian.BIG)

@@ -65,7 +65,7 @@ class InfluxWriter:
             
             for phase_name, reg_name in grid_voltages:
                 voltage_value = regs.get_value(reg_name)
-                voltage_point = Point("grid_voltages") \
+                voltage_point = Point("grid_voltages2") \
                     .tag("invertor_no", f"inv{invertor.invertor_no}") \
                     .tag("phase", phase_name) \
                     .field("value", voltage_value) \

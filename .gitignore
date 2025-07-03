@@ -5,3 +5,4 @@ venv
 logs
 socat.sh
 config.py
+nohup.out

@@ -88,7 +88,7 @@ class GoodweHTSet:
                 print(f"Error in reading cycle: {e}")
                 
             print(f"Waiting 5 seconds before next cycle...")
-            await asyncio.sleep(5)
+            await asyncio.sleep(60)
 
     def addr_diff(self, start_name, end_name):
         dif = self.regs.get(end_name).address - self.regs.get(start_name).address
