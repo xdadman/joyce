@@ -313,7 +313,7 @@ class GoodweHTRegs:
         decoder = BinaryPayloadDecoder.fromRegisters(values, byteorder=Endian.BIG, wordorder=Endian.BIG)
         for reg in self.regs.values():
             if address_from <= reg.address <= address_to:
-                print(reg)
+                #print(reg)
                 reg.decode(decoder)
                 #reg.print()
 
