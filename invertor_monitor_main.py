@@ -70,8 +70,10 @@ class GoodweHTSet:
                     try:
                         actual_power_adjust = await self.get_actual_power_adjust(invertor)
                         if actual_power_adjust != power_adjust:
-                            print(f"Actual power adjust {actual_power_adjust} in invertor {invertor} differs from RTU {power_adjust}")
+                            print(f"Need update power adjust {actual_power_adjust} in invertor {invertor}, RTU request: {power_adjust}")
                             await self.set_actual_power_adjust(invertor, power_adjust)
+                        else:
+                            print(f"Skip power adjust {actual_power_adjust} in invertor {invertor}, actual is the same.")
                     except Exception as e:
                         print(f"Error in reading/setting regulation for {invertor}: {e}")
             except Exception as e:
@@ -110,12 +112,11 @@ class GoodweHTSet:
         return invertor.power_adjust
 
     async def read_invertor_power_adjust(self, invertor: Invertor):
-        print(f"Reading invertor power adjust: {invertor}")
         slave = invertor.slave_address
         result_adjust = await self.client.read_holding_registers(41480, 1, slave=slave)
         decoder = BinaryPayloadDecoder.fromRegisters(result_adjust.registers, byteorder=Endian.BIG, wordorder=Endian.BIG)
         power_adjust = decoder.decode_16bit_uint()
-        print(f"Power adjust {power_adjust} for slave {slave}")
+        print(f"Read Actual Power adjust for {slave} is {power_adjust}")
         return power_adjust
 
     async def set_actual_power_adjust(self, invertor: Invertor, power_adjust: int):
@@ -123,7 +124,7 @@ class GoodweHTSet:
         invertor.power_adjust = power_adjust
 
     async def write_invertor_power_adjust(self, invertor: Invertor, power_adjust: int):
-        print(f"Writing invertor power adjust: {power_adjust} {invertor}")
+        print(f"Writing invertor power adjust: {power_adjust} to {invertor}")
         slave = invertor.slave_address
         builder = BinaryPayloadBuilder(byteorder=Endian.BIG, wordorder=Endian.BIG)
         builder.add_16bit_uint(power_adjust)
