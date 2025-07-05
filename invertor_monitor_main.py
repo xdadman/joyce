@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import logging
 from typing import List
 
@@ -13,6 +14,7 @@ from registers_goodwe_ht import GoodweHTRegs, RegName
 from influx import InfluxWriter
 from rtu_monitor import RtuMonitor
 
+HT_NOMINAL_POWER = 110 # kW
 
 class GoodweHTSet:
     def __init__(self, config: Config, influx_writer: InfluxWriter, rtu_monitor: RtuMonitor):
@@ -32,7 +34,7 @@ class GoodweHTSet:
 
     async def start_socat(self):
         print("Starting socat")
-        cmd = ["socat", "PTY,link=/tmp/ttyVirtual,raw,echo=0", "TCP:10.71.0.4:2000"]
+        #cmd = ["socat", "PTY,link=/tmp/ttyVirtual,raw,echo=0", "TCP:10.71.0.4:2000"]
         cmd = ["socat", "PTY,link=/tmp/ttyVirtual,raw,echo=0", "TCP:10.76.1.48:2000"]
         import subprocess
         subprocess.Popen(cmd)
@@ -47,30 +49,42 @@ class GoodweHTSet:
             parity="N",
             stopbits=1,
         )
+
         if self.config.serial_device == "/tmp/ttyVirtual":
             await self.start_socat()
 
         await self.client.connect()
 
         while True:
-            print(f"\n=== Reading cycle ===")
+            print(f"=== Cycle === {datetime.datetime.now()}")
 
-            regulation = None
+            # Read regulation setup from RTU
+            power_adjust = None
             try:
+                # Read percent regulation from RTU signals (0%, 30%, 60%, 100%)
                 regulation = await self.rtu_monitor.read_requested_regulation()
-                pass
-            except Exception as e:
-                print(f"Exception getting RTU regulation: {e}")
-            print(f"Regulation for this cycle: {regulation}")
+                power_adjust = int(regulation * HT_NOMINAL_POWER / 100)
+                print(f"Power adjust: {power_adjust} from regulation {regulation}")
 
+                for invertor in self.invertors:
+                    try:
+                        actual_power_adjust = await self.get_actual_power_adjust(invertor)
+                        if actual_power_adjust != power_adjust:
+                            print(f"Actual power adjust {actual_power_adjust} in invertor {invertor} differs from RTU {power_adjust}")
+                            await self.set_actual_power_adjust(invertor, power_adjust)
+                    except Exception as e:
+                        print(f"Error in reading/setting regulation for {invertor}: {e}")
+            except Exception as e:
+                # TODO - toto nechceme, chceme nastavit 100% i kdyz nejede
+                print(f"Exception getting RTU regulation: {e}, skipping power regulation...")
+
+            # Standard invertor monitoring
             try:
                 for invertor in self.invertors:
                     print(f"Invertor round: {invertor}")
                     try:
                         regs = await self.read_invertor_regs(invertor)
-
                         self.print_invertor_regs(regs)
-
                         try:
                             self.write_influx_invertor_regs(regs, invertor)
                             print("Data successfully written to InfluxDB")
@@ -90,6 +104,34 @@ class GoodweHTSet:
         print(f"addre diff {dif}")
         return self.regs.get(end_name).address - self.regs.get(start_name).address + self.regs.get(end_name).get_size()
 
+    async def get_actual_power_adjust(self, invertor: Invertor):
+        if not invertor.power_adjust:
+            invertor.power_adjust = await self.get_actual_power_adjust(invertor)
+        return invertor.power_adjust
+
+    async def read_invertor_power_adjust(self, invertor: Invertor):
+        print(f"Reading invertor power adjust: {invertor}")
+        slave = invertor.slave_address
+        result_adjust = await self.client.read_holding_registers(41480, 1, slave=slave)
+        decoder = BinaryPayloadDecoder.fromRegisters(result_adjust.registers, byteorder=Endian.BIG, wordorder=Endian.BIG)
+        power_adjust = decoder.decode_16bit_uint()
+        print(f"Power adjust {power_adjust} for slave {slave}")
+        return power_adjust
+
+    async def set_actual_power_adjust(self, invertor: Invertor, power_adjust: int):
+        await self.write_invertor_power_adjust(invertor, power_adjust)
+        invertor.power_adjust = power_adjust
+
+    async def write_invertor_power_adjust(self, invertor: Invertor, power_adjust: int):
+        print(f"Writing invertor power adjust: {power_adjust} {invertor}")
+        slave = invertor.slave_address
+        builder = BinaryPayloadBuilder(byteorder=Endian.BIG, wordorder=Endian.BIG)
+        builder.add_16bit_uint(power_adjust)
+        registers = builder.to_registers()
+        # TODO - remove to set it
+        #await self.client.write_registers(41480, registers, slave=slave)
+
+
     async def read_invertor_regs(self, invertor: Invertor) -> GoodweHTRegs:
         regs = GoodweHTRegs()
         slave = invertor.slave_address
@@ -98,20 +140,6 @@ class GoodweHTSet:
         result2 = await self.client.read_holding_registers(32106, self.addr_diff(RegName.CUMULATIVE_POWER_GENERATION, RegName.POWER_GENERATION_YEAR), slave=slave)
         # result3 = await self.client.read_holding_registers(32180, self.addr_diff(RegName.ACTIVE_POWER_CALCULATION, RegName.ACTIVE_POWER_CALCULATION), slave=slave)
         result_rtc = await self.client.read_holding_registers(41313, self.addr_diff(RegName.RTC_YEAR_MONTH, RegName.RTC_MINUTE_SECOND), slave=slave)
-
-        write_adjust = False
-
-        if write_adjust:
-            builder = BinaryPayloadBuilder(byteorder=Endian.BIG, wordorder=Endian.BIG)
-            builder.add_16bit_uint(110)
-            registers = builder.to_registers()
-            await self.client.write_registers(41480, registers, slave=slave)
-
-        result_adjust = await self.client.read_holding_registers(41480, 1, slave=slave)
-        decoder = BinaryPayloadDecoder.fromRegisters(result_adjust.registers, byteorder=Endian.BIG,
-                                                     wordorder=Endian.BIG)
-        power_adjust = decoder.decode_16bit_uint()
-        print(f"Power adjust {power_adjust}")
 
         regs.decode(result0.registers, regs.get(RegName.OPER_STATUS).address, regs.get(RegName.OPER_STATUS).address)
         regs.decode(result1.registers, regs.get(RegName.PV1_U).address, regs.get(RegName.INTERNAL_TEMPERATURE).address)
