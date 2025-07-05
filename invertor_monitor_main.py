@@ -106,7 +106,7 @@ class GoodweHTSet:
 
     async def get_actual_power_adjust(self, invertor: Invertor):
         if not invertor.power_adjust:
-            invertor.power_adjust = await self.get_actual_power_adjust(invertor)
+            invertor.power_adjust = await self.read_invertor_power_adjust(invertor)
         return invertor.power_adjust
 
     async def read_invertor_power_adjust(self, invertor: Invertor):
