@@ -280,6 +280,7 @@ class GoodweHTRegs:
         }
         self.total_regs_count = self.calculate_regs_count()
         self.last_plant_data_addr = self.get(RegName.ACTIVE_POWER_CALCULATION).address
+        self.skip_names = ["power_generation_day", "power_generation_month", "power_generation_year", "active_power_calculation", "rtc_year_month", "rtc_day_hour", "rtc_minute_second"]
 
     def set_value(self, name: RegName, value):
         reg: Reg = self.regs[name]

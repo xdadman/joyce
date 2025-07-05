@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import json
 import logging
 from typing import List
 
@@ -87,6 +88,11 @@ class GoodweHTSet:
                     try:
                         regs = await self.read_invertor_regs(invertor)
                         self.print_invertor_regs(regs)
+
+                        # convert regs to json
+                        json_str = self.generate_invetor_regs_json(regs, invertor, self.config)
+                        print(json_str)
+
                         try:
                             self.write_influx_invertor_regs(regs, invertor)
                             print("Data successfully written to InfluxDB")
@@ -236,6 +242,42 @@ class GoodweHTSet:
         if self.influx_writer:
             self.influx_writer.write_regs(regs, invertor)
 
+    def generate_invetor_regs_json(self, regs: GoodweHTRegs, invertor: Invertor, config: Config) -> str:
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        iso_string = now_utc.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        rtc_year_month = regs.get_value(RegName.RTC_YEAR_MONTH)
+        rtc_day_hour = regs.get_value(RegName.RTC_DAY_HOUR)
+        rtc_minute_second = regs.get_value(RegName.RTC_MINUTE_SECOND)
+
+        year = (rtc_year_month >> 8) & 0xFF
+        month = rtc_year_month & 0xFF
+        day = (rtc_day_hour >> 8) & 0xFF
+        hour = rtc_day_hour & 0xFF
+        minute = (rtc_minute_second >> 8) & 0xFF
+        second = rtc_minute_second & 0xFF
+
+        # Convert 2-digit year to 4-digit (assuming 20xx)
+        full_year = 2000 + year if year >= 15 else 2000 + year
+
+        rtc = f"{full_year:04d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:02d}"
+
+        data = {
+            "plant": config.plant,
+            "invertor_no": invertor.invertor_no,
+            "invertor_typ": "goodwe-ht",
+            "slave_address": invertor.slave_address,
+            "power_adjust": invertor.power_adjust,
+            "timestamp": iso_string,
+            "rtc": rtc
+        }
+        
+        for reg in regs.regs.values():
+            if reg.json_name not in regs.skip_names:
+                data[reg.json_name] = round(reg.value, 2)
+            
+        return json.dumps(data, indent=2)
+
 
 
 async def main():
@@ -253,4 +295,5 @@ async def main():
 
 
 if __name__ == '__main__':
+    print(datetime.datetime.now().isoformat())
     asyncio.run(main())
