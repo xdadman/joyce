@@ -2,7 +2,12 @@ import asyncio
 
 from advantech_adam import AdamDevice
 from config import Config
+import logging
 
+log = logging.getLogger(__name__)
+
+
+DEFAULT_REGULATION = 100
 
 class RtuMonitor:
     def __init__(self, adam_ip: str):
@@ -10,15 +15,15 @@ class RtuMonitor:
         self.connected = False
 
 
-    # Method returns requested regulation in percent 0- full reguilation, 100 - no regulation
+    # Method returns requested regulation in percent 0- full reguilation, 100 - no regulation, defaulting to DEFAULT_REGULATION
     async def read_requested_regulation(self) -> int:
         try:
             if not self.connected:
                 await self.adam.connect()
                 self.connected = True
         except Exception as e:
-            print(f"Error while connecting to ADAM: {e}")
-            return None
+            print(f"Error REG_ERROR while connecting to ADAM: {e}, default regulation to {DEFAULT_REGULATION}")
+            return DEFAULT_REGULATION
 
         try:
             inputs = await self.adam.read_digital_inputs(count=4)
@@ -26,9 +31,9 @@ class RtuMonitor:
             print(f"regulation = {regulation} inputs: {inputs}")
             return regulation
         except Exception as e:
-            print(f"Error while getting inputs from ADAM: {e}")
+            print(f"Error REG_ERROR while getting inputs from ADAM: {e}, default regulation to {DEFAULT_REGULATION}")
             self.connected = False
-            return None
+            return DEFAULT_REGULATION
 
     # When input is swtiched on then its False, if is not switched, then its True
     def inputs_to_regulation(self, inputs: list[bool]) -> int:

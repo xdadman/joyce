@@ -14,6 +14,9 @@ from invertor import Invertor
 from registers_goodwe_ht import GoodweHTRegs, RegName
 from influx import InfluxWriter
 from rtu_monitor import RtuMonitor
+import logging
+
+log = logging.getLogger(__name__)
 
 HT_NOMINAL_POWER = 110 # kW
 
@@ -282,6 +285,7 @@ class GoodweHTSet:
 
 async def main():
     setup_logging(log_level=logging.INFO)
+
     config = Config()
     influx_writer = InfluxWriter(
         url="http://10.76.0.1:8087",
@@ -295,5 +299,4 @@ async def main():
 
 
 if __name__ == '__main__':
-    print(datetime.datetime.now().isoformat())
     asyncio.run(main())

@@ -7,7 +7,9 @@ Compatible with ADAM-6050
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 import asyncio
+import logging
 
+log = logging.getLogger(__name__)
 
 class AdamDevice:
     def __init__(self, ip, port=502, slave_id=1, timeout=3):

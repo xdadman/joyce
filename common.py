@@ -4,9 +4,7 @@ import logging
 import sys, os
 from multiprocessing import Queue
 
-from logging.handlers import TimedRotatingFileHandler
 
-USE_LOKI = False
 USE_FILES = True
 USE_STDOUT = True
 
@@ -29,31 +27,16 @@ def setup_logging(log_level: int):
 
     root_logger.setLevel(log_level)
 
-    if USE_LOKI:
-        import logging_loki
-        handler = logging_loki.LokiQueueHandler(
-            Queue(-1),
-            url="http://192.168.3.14:3100/loki/api/v1/push",
-            tags={"application": "my-app", "esi_no": "1"},
-            auth=("username", "password"),
-            version="1",
-        )
-        handler.setFormatter(formatter)
-        root_logger.addHandler(handler)
-
     if USE_FILES:
         log_path = "./logs"
         if not os.path.isdir(log_path):
             root_logger.error("No 'logs' directory exists")
             raise Exception("No 'logs' directory exists")
-        filename = "esi.log"
+        filename = "goodwe_monitor.log"
         file_handler = logging.FileHandler("{0}/{1}".format(log_path, filename))
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
 
-    logging.getLogger('aiokafka.conn').setLevel(logging.ERROR)
-    # usefull configurations
-    # logging.getLogger('aiokafka').setLevel(logging.INFO)
     # logging.getLogger('pymodbus.payload').setLevel(logging.DEBUG)
     # logging.getLogger('pymodbus.transaction').setLevel(logging.DEBUG)
     # logging.getLogger('pymodbus.framer').setLevel(logging.DEBUG)
