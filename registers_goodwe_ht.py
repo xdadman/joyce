@@ -111,7 +111,7 @@ class Space:
     def encode(self, builder: BinaryPayloadBuilder):
         for i in range(0, self.size):
             if self.values[i]:
-                print("Encoding space %d" % self.values[i])
+                log.info("Encoding space %d" % self.values[i])
             builder.add_16bit_uint(self.values[i])
 
     def decode(self, decoder: BinaryPayloadDecoder):

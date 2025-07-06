@@ -22,16 +22,16 @@ class RtuMonitor:
                 await self.adam.connect()
                 self.connected = True
         except Exception as e:
-            print(f"Error REG_ERROR while connecting to ADAM: {e}, default regulation to {DEFAULT_REGULATION}")
+            log.error(f"Error REG_ERROR while connecting to ADAM: {e}, default regulation to {DEFAULT_REGULATION}")
             return DEFAULT_REGULATION
 
         try:
             inputs = await self.adam.read_digital_inputs(count=4)
             regulation = self.inputs_to_regulation(inputs)
-            print(f"regulation = {regulation} inputs: {inputs}")
+            log.info(f"regulation = {regulation} inputs: {inputs}")
             return regulation
         except Exception as e:
-            print(f"Error REG_ERROR while getting inputs from ADAM: {e}, default regulation to {DEFAULT_REGULATION}")
+            log.error(f"Error REG_ERROR while getting inputs from ADAM: {e}, default regulation to {DEFAULT_REGULATION}")
             self.connected = False
             return DEFAULT_REGULATION
 
@@ -47,7 +47,7 @@ class RtuMonitor:
             return 60
         if not i4:
             return 100
-        print("Defaulting not set RTU switch to 100")
+        log.warning("Defaulting not set RTU switch to 100")
         return 100
 
 
@@ -57,7 +57,7 @@ async def main():
 
     while True:
         regulation = await rtu_decoder.read_requested_regulation()
-        print(f"regulation: {regulation}")
+        log.info(f"regulation: {regulation}")
         await asyncio.sleep(1)
 
 
@@ -67,31 +67,31 @@ if __name__ == '__main__':
     inputs = [True, True, True, True]
     expected_value = 100
     regulation = mon.inputs_to_regulation(inputs)
-    print(f"regulation: {regulation} for {inputs}")
+    log.info(f"regulation: {regulation} for {inputs}")
     assert regulation == expected_value, f"Expected {expected_value}, got {regulation}"
 
     inputs = [True, True, True, False]
     expected_value = 100
     regulation = mon.inputs_to_regulation(inputs)
-    print(f"regulation: {regulation} for {inputs}")
+    log.info(f"regulation: {regulation} for {inputs}")
     assert regulation == expected_value, f"Expected {expected_value}, got {regulation}"
 
     inputs = [True, True, False, True]
     expected_value = 60
     regulation = mon.inputs_to_regulation(inputs)
-    print(f"regulation: {regulation} for {inputs}")
+    log.info(f"regulation: {regulation} for {inputs}")
     assert regulation == expected_value, f"Expected {expected_value}, got {regulation}"
 
     inputs = [True, False, True, True]
     expected_value = 30
     regulation = mon.inputs_to_regulation(inputs)
-    print(f"regulation: {regulation} for {inputs}")
+    log.info(f"regulation: {regulation} for {inputs}")
     assert regulation == expected_value, f"Expected {expected_value}, got {regulation}"
 
     inputs = [False, True, True, True]
     expected_value = 0
     regulation = mon.inputs_to_regulation(inputs)
-    print(f"regulation: {regulation} for {inputs}")
+    log.info(f"regulation: {regulation} for {inputs}")
     assert regulation == expected_value, f"Expected {expected_value}, got {regulation}"
 
     #asyncio.run(main())

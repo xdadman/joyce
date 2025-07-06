@@ -22,21 +22,20 @@ class AdamDevice:
     async def connect(self):
         """Connect to the ADAM module"""
         self.client = AsyncModbusTcpClient(host=self.ip, port=self.port, timeout=self.timeout)
-        print(f"Connecting to ADAM module at {self.ip}:{self.port}")
         connection = await self.client.connect()
         
         if not connection:
-            print("Failed to connect to ADAM module")
+            log.error("ADAM Failed to connect {self.ip}:{self.port}")
             return False
         
-        print("Connected successfully!")
+        log.info("ADAM Connected successfully {self.ip}:{self.port}")
         return True
 
     async def disconnect(self):
         """Disconnect from the ADAM module"""
         if self.client:
             await self.client.close()
-            print("Connection closed")
+            log.info("Connection closed")
 
     async def read_digital_inputs(self, start_address=0, count=8):
         """
@@ -47,11 +46,11 @@ class AdamDevice:
         try:
             result = await self.client.read_discrete_inputs(start_address, count, slave=self.slave_id)
             if result.isError():
-                print(f"Error reading digital inputs: {result}")
+                log.error(f"Error reading digital inputs: {result}")
                 return None
             return result.bits[:count]
         except ModbusException as e:
-            print(f"Modbus exception reading digital inputs: {e}")
+            log.error(f"Modbus exception reading digital inputs: {e}")
             return None
 
     async def read_analog_inputs(self, start_address=0x01, count=4):
@@ -63,11 +62,11 @@ class AdamDevice:
         try:
             result = await self.client.read_input_registers(start_address, count, slave=self.slave_id)
             if result.isError():
-                print(f"Error reading analog inputs: {result}")
+                log.error(f"Error reading analog inputs: {result}")
                 return None
             return result.registers
         except ModbusException as e:
-            print(f"Modbus exception reading analog inputs: {e}")
+            log.error(f"Modbus exception reading analog inputs: {e}")
             return None
 
     async def read_holding_registers(self, start_address=0x01, count=4):
@@ -77,11 +76,11 @@ class AdamDevice:
         try:
             result = await self.client.read_holding_registers(start_address, count, slave=self.slave_id)
             if result.isError():
-                print(f"Error reading holding registers: {result}")
+                log.error(f"Error reading holding registers: {result}")
                 return None
             return result.registers
         except ModbusException as e:
-            print(f"Modbus exception reading holding registers: {e}")
+            log.error(f"Modbus exception reading holding registers: {e}")
             return None
 
     async def write_holding_registers(self, start_address, values):
@@ -98,11 +97,11 @@ class AdamDevice:
                 result = await self.client.write_register(start_address, values, slave=self.slave_id)
             
             if result.isError():
-                print(f"Error writing holding registers: {result}")
+                log.error(f"Error writing holding registers: {result}")
                 return False
             return True
         except ModbusException as e:
-            print(f"Modbus exception writing holding registers: {e}")
+            log.error(f"Modbus exception writing holding registers: {e}")
             return False
 
     async def write_digital_outputs(self, start_address, values):
@@ -119,11 +118,11 @@ class AdamDevice:
                 result = await self.client.write_coil(start_address, values, slave=self.slave_id)
             
             if result.isError():
-                print(f"Error writing digital outputs: {result}")
+                log.error(f"Error writing digital outputs: {result}")
                 return False
             return True
         except ModbusException as e:
-            print(f"Modbus exception writing digital outputs: {e}")
+            log.error(f"Modbus exception writing digital outputs: {e}")
             return False
 
     async def read_module_info(self):
@@ -134,16 +133,16 @@ class AdamDevice:
             # Read module name (typically at holding register 0x0000)
             result = await self.client.read_holding_registers(0x0000, 4, slave=self.slave_id)
             if not result.isError():
-                print("Module Info:")
-                print(f"  Registers 0x0000-0x0003: {result.registers}")
+                log.info("Module Info:")
+                log.info(f"  Registers 0x0000-0x0003: {result.registers}")
 
             # Read firmware version (location varies by model)
             result = await self.client.read_holding_registers(0x0004, 2, slave=self.slave_id)
             if not result.isError():
-                print(f"  Firmware info: {result.registers}")
+                log.info(f"  Firmware info: {result.registers}")
 
         except ModbusException as e:
-            print(f"Error reading module info: {e}")
+            log.error(f"Error reading module info: {e}")
 
     async def read_cycle(self, digital_count=8, holding_count=2):
         """
@@ -152,9 +151,9 @@ class AdamDevice:
         # Read digital inputs
         digital_inputs = await self.read_digital_inputs(start_address=0, count=digital_count)
         if digital_inputs is not None:
-            print("Digital Inputs:")
+            log.info("Digital Inputs:")
             for j, state in enumerate(digital_inputs):
-                print(f"  DI{j}: {'ON' if state else 'OFF'}")
+                log.info(f"  DI{j}: {'ON' if state else 'OFF'}")
 
         # # Read holding registers
         # holding_regs = await self.read_holding_registers(start_address=0x01, count=holding_count)
@@ -185,14 +184,14 @@ async def main():
 
         # Read data in a loop
         for i in range(50):  # Read 50 times as example
-            print(f"\n--- Reading cycle {i + 1} ---")
+            log.info(f"\n--- Reading cycle {i + 1} ---")
             await adam.read_cycle()
             await asyncio.sleep(2)  # Wait 2 seconds between readings
 
     except KeyboardInterrupt:
-        print("\nStopped by user")
+        log.info("\nStopped by user")
     except Exception as e:
-        print(f"Error: {e}")
+        log.error(f"Error: {e}")
     finally:
         # Close the connection
         await adam.disconnect()
