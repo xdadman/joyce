@@ -92,6 +92,17 @@ class RegName(Enum):
     POWER_GENERATION_MONTH = auto()
     POWER_GENERATION_YEAR = auto()
     ACTIVE_POWER_CALCULATION = auto()
+
+    SERNUM1 = auto()
+    SERNUM2 = auto()
+    SERNUM3 = auto()
+    SERNUM4 = auto()
+    SERNUM5 = auto()
+    SERNUM6 = auto()
+    SERNUM7 = auto()
+    SERNUM8 = auto()
+
+
     RTC_YEAR_MONTH = auto()
     RTC_DAY_HOUR = auto()
     RTC_MINUTE_SECOND = auto()
@@ -274,6 +285,17 @@ class GoodweHTRegs:
             RegName.POWER_GENERATION_MONTH: Reg("Power Generation Month", "power_generation_month", RegType.U32, 32116, 0.01),
             RegName.POWER_GENERATION_YEAR: Reg("Power Generation Year", "power_generation_year", RegType.U32, 32118, 0.01),
             RegName.ACTIVE_POWER_CALCULATION: Reg("Active Power Calculation", "active_power_calculation", RegType.I32, 32180, 1), #0.001),
+
+            RegName.SERNUM1: Reg("SerNum 1", "sernum1", RegType.U16, 35502),
+            RegName.SERNUM2: Reg("SerNum 2", "sernum2", RegType.U16, 35503),
+            RegName.SERNUM3: Reg("SerNum 3", "sernum3", RegType.U16, 35504),
+            RegName.SERNUM4: Reg("SerNum 4", "sernum4", RegType.U16, 35505),
+            RegName.SERNUM5: Reg("SerNum 5", "sernum5", RegType.U16, 35506),
+            RegName.SERNUM6: Reg("SerNum 6", "sernum6", RegType.U16, 35507),
+            RegName.SERNUM7: Reg("SerNum 7", "sernum7", RegType.U16, 35508),
+            RegName.SERNUM8: Reg("SerNum 8", "sernum8", RegType.U16, 35509),
+
+
             RegName.RTC_YEAR_MONTH: Reg("RTC Year/Month", "rtc_year_month", RegType.U16, 41313),
             RegName.RTC_DAY_HOUR: Reg("RTC Day/Hour", "rtc_day_hour", RegType.U16, 41314),
             RegName.RTC_MINUTE_SECOND: Reg("RTC Minute/Second", "rtc_minute_second", RegType.U16, 41315),

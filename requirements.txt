@@ -3,3 +3,4 @@ pymodbus==3.6.9
 simplejson==3.19.3
 pytz
 influxdb-client
+aiosmtplib

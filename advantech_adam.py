@@ -25,10 +25,10 @@ class AdamDevice:
         connection = await self.client.connect()
         
         if not connection:
-            log.error("ADAM Failed to connect {self.ip}:{self.port}")
+            log.error(f"ADAM Failed to connect {self.ip}:{self.port}")
             return False
         
-        log.info("ADAM Connected successfully {self.ip}:{self.port}")
+        log.info(f"ADAM Connected successfully {self.ip}:{self.port}")
         return True
 
     async def disconnect(self):

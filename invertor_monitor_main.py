@@ -10,11 +10,10 @@ from pymodbus.payload import BinaryPayloadDecoder, BinaryPayloadBuilder
 
 from common import setup_logging
 from config import Config
+from influx import InfluxWriter
 from invertor import Invertor
 from registers_goodwe_ht import GoodweHTRegs, RegName
-from influx import InfluxWriter
 from rtu_monitor import RtuMonitor
-import logging
 
 log = logging.getLogger(__name__)
 
@@ -40,8 +39,8 @@ class GoodweHTSet:
 
     async def start_socat(self):
         log.info("Starting socat")
-        #cmd = ["socat", "PTY,link=/tmp/ttyVirtual,raw,echo=0", "TCP:10.71.0.4:2000"]
-        cmd = ["socat", "PTY,link=/tmp/ttyVirtual,raw,echo=0", "TCP:10.76.1.48:2000"]
+        cmd = ["socat", "PTY,link=/tmp/ttyVirtual,raw,echo=0", "TCP:10.71.0.4:2000"]
+        #cmd = ["socat", "PTY,link=/tmp/ttyVirtual,raw,echo=0", "TCP:10.76.1.48:2000"]
         import subprocess
         subprocess.Popen(cmd)
         await asyncio.sleep(2)
@@ -150,13 +149,13 @@ class GoodweHTSet:
         result0 = await self.client.read_holding_registers(32002, 1, slave=slave)
         result1 = await self.client.read_holding_registers(32016, self.addr_diff(RegName.PV1_U, RegName.INTERNAL_TEMPERATURE), slave=slave)
         result2 = await self.client.read_holding_registers(32106, self.addr_diff(RegName.CUMULATIVE_POWER_GENERATION, RegName.POWER_GENERATION_YEAR), slave=slave)
-        # result3 = await self.client.read_holding_registers(32180, self.addr_diff(RegName.ACTIVE_POWER_CALCULATION, RegName.ACTIVE_POWER_CALCULATION), slave=slave)
+        result3 = await self.client.read_holding_registers(35502, self.addr_diff(RegName.SERNUM1, RegName.SERNUM8), slave=slave)
         result_rtc = await self.client.read_holding_registers(41313, self.addr_diff(RegName.RTC_YEAR_MONTH, RegName.RTC_MINUTE_SECOND), slave=slave)
 
         regs.decode(result0.registers, regs.get(RegName.OPER_STATUS).address, regs.get(RegName.OPER_STATUS).address)
         regs.decode(result1.registers, regs.get(RegName.PV1_U).address, regs.get(RegName.INTERNAL_TEMPERATURE).address)
         regs.decode(result2.registers, regs.get(RegName.CUMULATIVE_POWER_GENERATION).address, regs.get(RegName.POWER_GENERATION_YEAR).address)
-        # regs.decode(result3.registers, regs.get(RegName.ACTIVE_POWER_CALCULATION).address, regs.get(RegName.ACTIVE_POWER_CALCULATION).address)
+        regs.decode(result3.registers, regs.get(RegName.SERNUM1).address, regs.get(RegName.SERNUM8).address)
         regs.decode(result_rtc.registers, regs.get(RegName.RTC_YEAR_MONTH).address, regs.get(RegName.RTC_MINUTE_SECOND).address)
         return regs
 
@@ -219,6 +218,43 @@ class GoodweHTSet:
 
         active_power_calculation = regs.get_value(RegName.ACTIVE_POWER_CALCULATION)
         #log.info(f"Active Power Calculation: {active_power_calculation:0.2f} kW")
+
+
+        # s1 = regs.get_value(RegName.SERNUM1)
+        # s2 = regs.get_value(RegName.SERNUM2)
+        # s3 = regs.get_value(RegName.SERNUM3)
+        # s4 = regs.get_value(RegName.SERNUM4)
+        # s5 = regs.get_value(RegName.SERNUM5)
+        # s6 = regs.get_value(RegName.SERNUM6)
+        # s7 = regs.get_value(RegName.SERNUM7)
+        # s8 = regs.get_value(RegName.SERNUM8)
+
+        serial_parts = [
+            regs.get_value(RegName.SERNUM1),
+            regs.get_value(RegName.SERNUM2),
+            regs.get_value(RegName.SERNUM3),
+            regs.get_value(RegName.SERNUM4),
+            regs.get_value(RegName.SERNUM5),
+            regs.get_value(RegName.SERNUM6),
+            regs.get_value(RegName.SERNUM7),
+            regs.get_value(RegName.SERNUM8)
+        ]
+
+        serial_chars = []
+        for part in serial_parts:
+            # Get high byte and low byte
+            high_byte = (part >> 8) & 0xFF
+            low_byte = part & 0xFF
+
+            # Add characters if they're valid ASCII (skip null bytes)
+            if high_byte > 0:
+                serial_chars.append(chr(high_byte))
+            if low_byte > 0:
+                serial_chars.append(chr(low_byte))
+
+        serial_number = ''.join(serial_chars)
+        print(f"Serial Number: {serial_number}")
+
 
         rtc_year_month = regs.get_value(RegName.RTC_YEAR_MONTH)
         rtc_day_hour = regs.get_value(RegName.RTC_DAY_HOUR)
