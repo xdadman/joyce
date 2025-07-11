@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import traceback
 from enum import Enum, auto
 import sys
 
@@ -18,6 +19,7 @@ class RegType(Enum):
     U32 = 3
     I32 = 4
     F32 = 5
+    STR = 6
 
 
 class RegName(Enum):
@@ -93,15 +95,7 @@ class RegName(Enum):
     POWER_GENERATION_YEAR = auto()
     ACTIVE_POWER_CALCULATION = auto()
 
-    SERNUM1 = auto()
-    SERNUM2 = auto()
-    SERNUM3 = auto()
-    SERNUM4 = auto()
-    SERNUM5 = auto()
-    SERNUM6 = auto()
-    SERNUM7 = auto()
-    SERNUM8 = auto()
-
+    SERIAL_NUMBER = auto()
 
     RTC_YEAR_MONTH = auto()
     RTC_DAY_HOUR = auto()
@@ -162,6 +156,8 @@ class Reg:
             return 2
         if self.typ == RegType.F32:
             return 2
+        if self.typ == RegType.STR:
+            return self.multiplier
         raise Exception("Unsupported type " + str(self.typ))
 
     def decode(self, decoder: BinaryPayloadDecoder):
@@ -181,14 +177,31 @@ class Reg:
             if math.isinf(self.value):
                 log.error("Inf value received in " + self.name)
                 self.value = 0.0
+        elif self.typ == RegType.STR:
+
+            string_length = int(self.multiplier)
+            raw_values = []
+            for _ in range(string_length):
+                raw_values.append(decoder.decode_16bit_uint())
+
+            chars = []
+            for val in raw_values:
+                high_byte = (val >> 8) & 0xFF
+                low_byte = val & 0xFF
+                if high_byte > 0:
+                    chars.append(chr(high_byte))
+                if low_byte > 0:
+                    chars.append(chr(low_byte))
+
+            self.value = ''.join(chars).rstrip('\x00')
         else:
             raise Exception("Unsupported type " + str(self.typ))
-        if self.multiplier:
+        if self.multiplier and self.typ != RegType.STR:
             self.value *= self.multiplier
 
     def encode(self, builder: BinaryPayloadBuilder):
         reg_val = self.value
-        if self.multiplier:
+        if self.multiplier and self.typ != RegType.STR:
             reg_val /= self.multiplier
         if self.typ == RegType.U16:
             builder.add_16bit_uint(int(reg_val))
@@ -200,6 +213,21 @@ class Reg:
             builder.add_32bit_int(int(reg_val))
         elif self.typ == RegType.F32:
             builder.add_32bit_float(reg_val)
+        elif self.typ == RegType.STR:
+            string_length = self.multiplier if self.multiplier else 8
+            string_val = str(reg_val) if reg_val else ""
+            
+            values = []
+            for i in range(0, len(string_val), 2):
+                high_byte = ord(string_val[i]) if i < len(string_val) else 0
+                low_byte = ord(string_val[i + 1]) if i + 1 < len(string_val) else 0
+                values.append((high_byte << 8) | low_byte)
+            
+            while len(values) < string_length:
+                values.append(0)
+            
+            for val in values:
+                builder.add_16bit_uint(val)
         else:
             raise Exception("Unsupported type " + str(self.typ))
 
@@ -286,14 +314,7 @@ class GoodweHTRegs:
             RegName.POWER_GENERATION_YEAR: Reg("Power Generation Year", "power_generation_year", RegType.U32, 32118, 0.01),
             RegName.ACTIVE_POWER_CALCULATION: Reg("Active Power Calculation", "active_power_calculation", RegType.I32, 32180, 1), #0.001),
 
-            RegName.SERNUM1: Reg("SerNum 1", "sernum1", RegType.U16, 35502),
-            RegName.SERNUM2: Reg("SerNum 2", "sernum2", RegType.U16, 35503),
-            RegName.SERNUM3: Reg("SerNum 3", "sernum3", RegType.U16, 35504),
-            RegName.SERNUM4: Reg("SerNum 4", "sernum4", RegType.U16, 35505),
-            RegName.SERNUM5: Reg("SerNum 5", "sernum5", RegType.U16, 35506),
-            RegName.SERNUM6: Reg("SerNum 6", "sernum6", RegType.U16, 35507),
-            RegName.SERNUM7: Reg("SerNum 7", "sernum7", RegType.U16, 35508),
-            RegName.SERNUM8: Reg("SerNum 8", "sernum8", RegType.U16, 35509),
+            RegName.SERIAL_NUMBER: Reg("Serial Number", "serial_number", RegType.STR, 35502, 8),
 
 
             RegName.RTC_YEAR_MONTH: Reg("RTC Year/Month", "rtc_year_month", RegType.U16, 41313),
