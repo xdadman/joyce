@@ -42,7 +42,7 @@ class Mailer:
 async def main():
     config = Config()
     mailer = Mailer(config.mail_smtp_server, config.mail_smtp_port, config.mail_username, config.mail_password, config.mail_from_addr)
-    await mailer.send_mail(to_addr=config.smtp_to_addr, subj='Test Subject', message_text='This is a test message from the async mailer.')
+    await mailer.send_mail(to_addr=config.mail_to_addr, subj='Test Subject', message_text='This is a test message from the async mailer.')
 
 
 if __name__ == "__main__":

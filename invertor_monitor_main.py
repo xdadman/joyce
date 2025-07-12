@@ -10,8 +10,10 @@ from pymodbus.payload import BinaryPayloadDecoder, BinaryPayloadBuilder
 
 from common import setup_logging
 from config import Config
+from event_sender import EventSender
 from influx import InfluxWriter
 from invertor import Invertor
+from mailer import Mailer
 from registers_goodwe_ht import GoodweHTRegs, RegName, RegType
 from rtu_monitor import RtuMonitor
 
@@ -22,11 +24,12 @@ ROUND_SEC = 60
 
 
 class GoodweHTSet:
-    def __init__(self, config: Config, influx_writer: InfluxWriter, rtu_monitor: RtuMonitor):
+    def __init__(self, config: Config, influx_writer: InfluxWriter, rtu_monitor: RtuMonitor, event_sender: EventSender):
         self.config = config
         self.invertors: List[Invertor] = self.invertors_from_cfg()
         self.influx_writer = influx_writer
         self.rtu_monitor: RtuMonitor = rtu_monitor
+        self.event_sender: EventSender = event_sender
         self.regs = GoodweHTRegs() # only for addressing purposes, not for data
 
     def invertors_from_cfg(self) -> List[Invertor]:
@@ -47,6 +50,9 @@ class GoodweHTSet:
         log.info("Started socat")
 
     async def run(self):
+
+        await self.event_sender.send_event(f"Started Invertor Monitor {self.config.plant}")
+
         self.client = AsyncModbusSerialClient(
             port=self.config.serial_device,
             baudrate=9600,
@@ -77,13 +83,16 @@ class GoodweHTSet:
                         if actual_power_adjust != power_adjust:
                             log.info(f"Need update power adjust {actual_power_adjust} in invertor {invertor}, RTU request: {power_adjust}")
                             await self.set_actual_power_adjust(invertor, power_adjust)
+                            await self.event_sender.send_event(f"Updated Power Adjust {self.config.plant} to {power_adjust}")
                         else:
                             log.info(f"Skip power adjust {actual_power_adjust} in invertor {invertor}, actual is the same.")
                     except Exception as e:
                         log.error(f"Error in reading/setting regulation for {invertor}: {e}")
+                        await self.event_sender.send_event(f"Error in reading/setting regulation for {self.config.plant} {invertor}", f"{e}")
             except Exception as e:
                 # TODO - toto nechceme, chceme nastavit 100% i kdyz nejede
                 log.error(f"Exception getting/setting RTU regulation: {e}, skipping power regulation...")
+                await self.event_sender.send_event(f"Error in reading/setting regulation for {self.config.plant}", f"{e}")
 
             # Standard invertor monitoring
             try:
@@ -102,11 +111,14 @@ class GoodweHTSet:
                             log.info("Data successfully written to InfluxDB")
                         except Exception as e:
                             log.error(f"Failed to write to InfluxDB: {e}")
+                            await self.event_sender.send_event(f"Failed to write to InfluxDB: {e}")
                     except Exception as e:
                         log.error(f"Failed to process invertor monitoring {invertor}: {e}")
+                        await self.event_sender.send_event(f"Failed to process invertor monitoring {invertor}: {e}")
 
             except Exception as e:
                 log.error(f"Error in reading cycle: {e}")
+                await self.event_sender.send_event(f"Error in reading cycle: {e}")
                 
             log.info(f"Waiting {ROUND_SEC} seconds before next cycle...")
             await asyncio.sleep(ROUND_SEC)
@@ -296,7 +308,10 @@ async def main():
         bucket="ht"
     )
     rtu_monitor = RtuMonitor(config.adam_ip)
-    test = GoodweHTSet(config, influx_writer, rtu_monitor)
+    config = Config()
+    mailer = Mailer(config.mail_smtp_server, config.mail_smtp_port, config.mail_username, config.mail_password, config.mail_from_addr)
+    event_sender = EventSender(mailer, config.mail_to_addr)
+    test = GoodweHTSet(config, influx_writer, rtu_monitor, event_sender)
     await test.run()
 
 
