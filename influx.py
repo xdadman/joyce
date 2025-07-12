@@ -95,6 +95,7 @@ class InfluxWriter:
                 .field("grid_frequency", regs.get_value(RegName.GRID_FREQUENCY)) \
                 .field("inverter_efficiency", regs.get_value(RegName.INVERTER_EFFICIENCY)) \
                 .field("internal_temperature", regs.get_value(RegName.INTERNAL_TEMPERATURE)) \
+                .field("power_adjust", invertor.power_adjust) \
                 .time(timestamp)
             points.append(stats_point)
             

@@ -163,14 +163,14 @@ class GoodweHTSet:
         status = regs.get_value(RegName.OPER_STATUS)
         log.info(f"Invertor status: {status}")
 
-        for i in range(1, 25):
-            pv_u_name = getattr(RegName, f"PV{i}_U")
-            pv_c_name = getattr(RegName, f"PV{i}_C")
-
-            pv_u = regs.get_value(pv_u_name)
-            pv_c = regs.get_value(pv_c_name)
-
-            log.info(f"PV{i}: {pv_u:0.1f}V {pv_c:0.2f}A")
+        # for i in range(1, 25):
+        #     pv_u_name = getattr(RegName, f"PV{i}_U")
+        #     pv_c_name = getattr(RegName, f"PV{i}_C")
+        #
+        #     pv_u = regs.get_value(pv_u_name)
+        #     pv_c = regs.get_value(pv_c_name)
+        #
+        #     log.info(f"PV{i}: {pv_u:0.1f}V {pv_c:0.2f}A")
 
 
         input_power = regs.get_value(RegName.INPUT_POWER)
