@@ -14,6 +14,7 @@ from event_sender import EventSender
 from influx import InfluxWriter
 from invertor import Invertor
 from mailer import Mailer
+from msgdb import MsgDb
 from registers_goodwe_ht import GoodweHTRegs, RegName, RegType
 from rtu_monitor import RtuMonitor
 
@@ -31,6 +32,7 @@ class GoodweHTSet:
         self.rtu_monitor: RtuMonitor = rtu_monitor
         self.event_sender: EventSender = event_sender
         self.regs = GoodweHTRegs() # only for addressing purposes, not for data
+        self.db = MsgDb()
 
     def invertors_from_cfg(self) -> List[Invertor]:
         invertors = []
@@ -65,6 +67,8 @@ class GoodweHTSet:
             await self.start_socat()
 
         await self.client.connect()
+
+        await self.db.connect()
 
         while True:
             log.info(f"=== Cycle === {datetime.datetime.now()}")
@@ -106,6 +110,8 @@ class GoodweHTSet:
                         json_str = self.generate_invetor_regs_json(regs, invertor, self.config)
                         print(json_str)
 
+                        await self.db.insert_message("data", json_str)
+
                         try:
                             self.write_influx_invertor_regs(regs, invertor)
                             log.info("Data successfully written to InfluxDB")
@@ -115,6 +121,25 @@ class GoodweHTSet:
                     except Exception as e:
                         log.error(f"Failed to process invertor monitoring {invertor}: {e}")
                         await self.event_sender.send_event(f"Failed to process invertor monitoring {invertor}: {e}")
+
+                # Read pending messages from db and send them, max 50 at a time
+                count = 0
+                while True:
+                    try:
+                        msg = await self.db.pending_msg_get()
+                        if not msg:
+                            log.info("No other messages")
+                            break
+                        count += 1
+                        await self.db.update_done(msg)
+                        if count == 50:
+                            log.info(f"Skipping next pending message after {count}, will be processed next round")
+                            break
+
+                    except Exception as e:
+                        log.error(f"Exception getting msg from db and sending to cloud: {e}")
+                        break
+
 
             except Exception as e:
                 log.error(f"Error in reading cycle: {e}")

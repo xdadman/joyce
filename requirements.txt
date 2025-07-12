@@ -4,3 +4,4 @@ simplejson==3.19.3
 pytz
 influxdb-client
 aiosmtplib
+aiosqlite
