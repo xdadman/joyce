@@ -3,6 +3,7 @@ __pycache__
 backup
 venv
 logs
+db
 socat.sh
 config.py
 nohup.out
