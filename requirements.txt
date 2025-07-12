@@ -5,3 +5,5 @@ pytz
 influxdb-client
 aiosmtplib
 aiosqlite
+aiohttp
+flask
