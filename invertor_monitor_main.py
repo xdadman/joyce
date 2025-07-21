@@ -8,6 +8,7 @@ from pymodbus.client import AsyncModbusSerialClient
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadDecoder, BinaryPayloadBuilder
 
+from cloud_sender import CloudSender
 from common import setup_logging
 from config import Config
 from event_sender import EventSender
@@ -25,12 +26,13 @@ ROUND_SEC = 60
 
 
 class GoodweHTSet:
-    def __init__(self, config: Config, influx_writer: InfluxWriter, rtu_monitor: RtuMonitor, event_sender: EventSender):
+    def __init__(self, config: Config, influx_writer: InfluxWriter, rtu_monitor: RtuMonitor, event_sender: EventSender, cloud_sender: CloudSender):
         self.config = config
         self.invertors: List[Invertor] = self.invertors_from_cfg()
         self.influx_writer = influx_writer
         self.rtu_monitor: RtuMonitor = rtu_monitor
         self.event_sender: EventSender = event_sender
+        self.cloud_sender: CloudSender = cloud_sender
         self.regs = GoodweHTRegs() # only for addressing purposes, not for data
         self.db = MsgDb()
 
@@ -111,6 +113,11 @@ class GoodweHTSet:
                         print(json_str)
 
                         await self.db.insert_message("data", json_str)
+
+                        try:
+                            await self.cloud_sender.send(json_str)
+                        except Exception as e:
+                            log.error(f"Failed to write to Cloud: {e}")
 
                         try:
                             self.write_influx_invertor_regs(regs, invertor)
@@ -336,7 +343,8 @@ async def main():
     config = Config()
     mailer = Mailer(config.mail_smtp_server, config.mail_smtp_port, config.mail_username, config.mail_password, config.mail_from_addr)
     event_sender = EventSender(mailer, config.mail_to_addr)
-    test = GoodweHTSet(config, influx_writer, rtu_monitor, event_sender)
+    cloud_sender = CloudSender(config.cloud_svc_url)
+    test = GoodweHTSet(config, influx_writer, rtu_monitor, event_sender, cloud_sender)
     await test.run()
 
 
