@@ -22,7 +22,7 @@ from rtu_monitor import RtuMonitor
 log = logging.getLogger(__name__)
 
 HT_NOMINAL_POWER = 110 # kW
-ROUND_SEC = 60
+ROUND_SEC = 20
 
 
 class GoodweHTSet:
@@ -184,7 +184,7 @@ class GoodweHTSet:
         builder.add_16bit_uint(power_adjust)
         registers = builder.to_registers()
         # TODO - remove to set it
-        #await self.client.write_registers(41480, registers, slave=slave)
+        await self.client.write_registers(41480, registers, slave=slave)
 
 
     async def read_invertor_regs(self, invertor: Invertor) -> GoodweHTRegs:
