@@ -22,7 +22,7 @@ from rtu_monitor import RtuMonitor
 log = logging.getLogger(__name__)
 
 HT_NOMINAL_POWER = 110 # kW
-ROUND_SEC = 20
+ROUND_SEC = 300 
 
 
 class GoodweHTSet:
