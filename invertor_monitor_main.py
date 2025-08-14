@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import json
 import logging
+import time
 from typing import List
 
 from pymodbus.client import AsyncModbusSerialClient
@@ -15,7 +16,7 @@ from event_sender import EventSender
 from influx import InfluxWriter
 from invertor import Invertor
 from mailer import Mailer
-from msgdb import MsgDb
+from msgdb import MsgDb, Msg
 from registers_goodwe_ht import GoodweHTRegs, RegName, RegType
 from rtu_monitor import RtuMonitor
 
@@ -115,11 +116,6 @@ class GoodweHTSet:
                         await self.db.insert_message("data", json_str)
 
                         try:
-                            await self.cloud_sender.send(json_str)
-                        except Exception as e:
-                            log.error(f"Failed to write to Cloud: {e}")
-
-                        try:
                             self.write_influx_invertor_regs(regs, invertor)
                             log.info("Data successfully written to InfluxDB")
                         except Exception as e:
@@ -133,12 +129,18 @@ class GoodweHTSet:
                 count = 0
                 while True:
                     try:
-                        msg = await self.db.pending_msg_get()
+                        msg:Msg = await self.db.pending_msg_get()
                         if not msg:
                             log.info("No other messages")
                             break
                         count += 1
-                        await self.db.update_done(msg)
+                        try:
+                            await self.cloud_sender.send(msg.msg)
+                            await self.db.update_done(msg)
+                        except Exception as e:
+                            log.error(f"Failed to write to Cloud: {e}, skipping next")
+                            break
+
                         if count == 50:
                             log.info(f"Skipping next pending message after {count}, will be processed next round")
                             break
@@ -183,7 +185,8 @@ class GoodweHTSet:
         builder = BinaryPayloadBuilder(byteorder=Endian.BIG, wordorder=Endian.BIG)
         builder.add_16bit_uint(power_adjust)
         registers = builder.to_registers()
-        # TODO - remove to set it
+        # COMMENT TO DISABLE SETTING OUTPUT POWER:q1
+
         await self.client.write_registers(41480, registers, slave=slave)
 
 

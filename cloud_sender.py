@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import threading
+import time
 
 import aiohttp
 
@@ -24,6 +25,7 @@ class CloudSender:
 
     async def send(self, json_str: str):
         logger.info("Sending message to cloud service...")
+        start_time = time.time()
         async with aiohttp.ClientSession() as session:
             res: aiohttp.ClientResponse = await session.post(
                 self.url,
@@ -33,7 +35,9 @@ class CloudSender:
             if res.status != 200:
                 #logger.error(f"Failed to send message, status: {res.status}")
                 raise Exception(f"Failed to send message, status {res.status}")
-        logger.info(f"Successfully sent message to cloud service")
+        end_time = time.time()
+        execution_time = end_time - start_time
+        logger.info(f"Successfully sent message to cloud service {execution_time:.2f} sec")
 
 
 async def main():
