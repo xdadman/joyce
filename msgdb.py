@@ -105,7 +105,7 @@ class MsgDb:
         await self.db.execute(sql)
 
     async def pending_msg_get(self) -> Msg:
-        sql = "SELECT id, topic, msg, state, created, sent FROM %s WHERE state = '%s' ORDER BY id ASC LIMIT 1;" \
+        sql = "SELECT id, topic, msg, state, created, sent FROM %s WHERE state = '%s' ORDER BY id DESC LIMIT 1;" \
              % (TABLE_NAME, STATE_PENDING)
         cursor = await self.db.execute(sql)
         row = await cursor.fetchone()

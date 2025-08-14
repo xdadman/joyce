@@ -141,7 +141,7 @@ class GoodweHTSet:
                             log.error(f"Failed to write to Cloud: {e}, skipping next")
                             break
 
-                        if count == 50:
+                        if count == 200:
                             log.info(f"Skipping next pending message after {count}, will be processed next round")
                             break
 
