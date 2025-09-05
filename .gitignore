@@ -7,3 +7,4 @@ db
 socat.sh
 config.py
 nohup.out
+export
