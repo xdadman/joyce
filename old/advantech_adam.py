@@ -154,3 +154,48 @@ class AdamDevice:
             log.info("Digital Inputs:")
             for j, state in enumerate(digital_inputs):
                 log.info(f"  DI{j}: {'ON' if state else 'OFF'}")
+
+        # # Read holding registers
+        # holding_regs = await self.read_holding_registers(start_address=0x01, count=holding_count)
+        # if holding_regs is not None:
+        #     print("Holding Registers:")
+        #     for j, value in enumerate(holding_regs):
+        #         print(f"  HR{j + 1}: {value}")
+
+
+async def main():
+    # Create ADAM device instance
+    adam = AdamDevice("10.72.3.39")
+
+    try:
+        # Connect to the ADAM module
+        if not await adam.connect():
+            return
+
+        await adam.write_digital_outputs(start_address=16, values=[1, 0, 0, 1])
+        #await adam.write_digital_outputs(start_address=16, values=[1, 1, 1, 1])
+        #await adam.write_digital_outputs(start_address=16, values=[0, 0, 0, 0])
+        #await adam.write_holding_registers(start_address=17, values=[0])
+
+        # while True:
+        #     digital_inputs = await adam.read_digital_inputs(start_address=16, count=7)
+        #     print(f"ous {digital_inputs}")
+        #     await asyncio.sleep(1)
+
+        # Read data in a loop
+        for i in range(50):  # Read 50 times as example
+            log.info(f"\n--- Reading cycle {i + 1} ---")
+            await adam.read_cycle()
+            await asyncio.sleep(2)  # Wait 2 seconds between readings
+
+    except KeyboardInterrupt:
+        log.info("\nStopped by user")
+    except Exception as e:
+        log.error(f"Error: {e}")
+    finally:
+        # Close the connection
+        await adam.disconnect()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

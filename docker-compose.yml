@@ -9,8 +9,6 @@ services:
       - TZ=Europe/Prague
     devices:
       - /dev:/dev
-    #ports:
-    #  - "5000:5000"
     volumes:
       - ./logs:/usr/src/app/logs
       - ./db:/usr/src/app/db

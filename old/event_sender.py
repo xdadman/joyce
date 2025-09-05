@@ -1,8 +1,11 @@
+import asyncio
 import logging
 import json
 import os
 from datetime import datetime, timedelta
 
+from common import setup_logging
+from config import Config
 from mailer import Mailer
 
 logger = logging.getLogger(__name__)
@@ -79,10 +82,24 @@ class EventSender:
         try:
             if not body:
                 body = subject
-            if self.mailer:
-                await self.mailer.send_mail(self.to_address, subject, body)
+            await self.mailer.send_mail(self.to_address, subject, body)
             self._record_send()
             return True
         except Exception as e:
             logger.error(f"Error sending event {body} {e}")
             return False
+
+async def main():
+    setup_logging(log_level=logging.INFO)
+    config = Config()
+    mailer = Mailer(config.mail_smtp_server, config.mail_smtp_port, config.mail_username, config.mail_password, config.mail_from_addr)
+    event_sender = EventSender(mailer, config.mail_to_addr)
+
+    for i in range(0, 12):
+        await event_sender.send_event(f"Event {i}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+

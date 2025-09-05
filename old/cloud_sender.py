@@ -38,3 +38,14 @@ class CloudSender:
         end_time = time.time()
         execution_time = end_time - start_time
         logger.info(f"Successfully sent message to cloud service {execution_time:.2f} sec")
+
+
+async def main():
+    config = Config()
+    cloud_sender = CloudSender(config.cloud_svc_url)
+    await cloud_sender.start_mock()
+    await cloud_sender.send(json.dumps({"kokot": "prdel"}))
+
+
+if __name__ == '__main__':
+    asyncio.run(main())

@@ -6,7 +6,7 @@ class Config:
         self.serial_device = "/dev/ttyAMA2"
         self.adam_ip = "192.168.0.116"
 
-        self.mail_enable = False
+
         self.mail_smtp_server="your.server.com"
         self.mail_smtp_port=465
         self.mail_username="your_username"
@@ -14,9 +14,3 @@ class Config:
 
         self.mail_from_addr = "Joyce Goodwe Monitor <your@mail>"
         self.mail_to_addr = "your@mail_tosend_to.com"
-
-        self.influx_enable = False
-        self.influx_url = "http://10.0.0.1:8086"
-        self.influx_token = "token_secret"
-        self.influx_org = "org"
-        self.influx_bucket = "ht"

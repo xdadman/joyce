@@ -1,9 +1,12 @@
+import asyncio
 import logging
 
 import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import datetime
+
+from config import Config
 
 log = logging.getLogger(__name__)
 
@@ -33,6 +36,18 @@ class Mailer:
         )
         
         log.info(f"Sent mail {subj}")
+
+
+
+async def main():
+    config = Config()
+    mailer = Mailer(config.mail_smtp_server, config.mail_smtp_port, config.mail_username, config.mail_password, config.mail_from_addr)
+    await mailer.send_mail(to_addr=config.mail_to_addr, subj='Test Subject', message_text='This is a test message from the async mailer.')
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
 
 
         

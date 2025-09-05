@@ -3,6 +3,10 @@ import aiosqlite
 import datetime
 import logging
 import os
+import common
+from pathlib import Path
+
+#from shutdown import shutdown_task
 
 DB_NAME = "messages.db"
 TABLE_NAME = "messages"
@@ -51,6 +55,12 @@ class MsgDb:
             os.rename("db/" + DB_NAME, backup_file)
             os.unlink(ROTATE_FILE_PATH)
             os.spawnl(os.P_NOWAIT, '/bin/gzip', '-f', backup_file)
+
+    # @classmethod
+    # async def rotate_initiate(cls):
+    #     log.info("Initiating rotation")
+    #     Path(ROTATE_FILE_PATH).touch()
+    #     await asyncio.create_task(shutdown_task())
 
     async def connect(self):
         self.db = await aiosqlite.connect("./db/%s" % DB_NAME)
@@ -136,3 +146,19 @@ class MsgDb:
         await self.db.execute(sql)
         await self.db.commit()
         log.debug("Updated done: %d", msg.msg_id)
+
+
+
+async def main():
+    common.setup_logging()
+    log.info("start")
+    db = MsgDb()
+    await db.connect()
+    id = await db.insert_message("Messaage")
+    msg = await db.pending_msg_get()
+    await db.update_done(msg)
+    log.info(msg)
+    await db.close()
+
+if __name__ == "__main__":
+    asyncio.run(main())

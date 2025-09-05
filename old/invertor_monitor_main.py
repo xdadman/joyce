@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import json
 import logging
+import time
 from typing import List
 
 from pymodbus.client import AsyncModbusSerialClient
@@ -335,23 +336,15 @@ async def main():
     setup_logging(log_level=logging.INFO)
 
     config = Config()
-    if config.influx_enable:
-        influx_writer = InfluxWriter(
-            url=config.influx_url,
-            token=config.influx_token,
-            org=config.influx_org,
-            bucket=config.influx_bucket
-        )
-    else:
-        influx_writer = None
-
+    influx_writer = InfluxWriter(
+        url="http://10.76.0.1:8087",
+        token="token",
+        org="myorg",
+        bucket="ht"
+    )
     rtu_monitor = RtuMonitor(config.adam_ip)
-
-    if config.mail_enable:
-        mailer = Mailer(config.mail_smtp_server, config.mail_smtp_port, config.mail_username, config.mail_password, config.mail_from_addr)
-    else:
-        mailer = None
-
+    config = Config()
+    mailer = Mailer(config.mail_smtp_server, config.mail_smtp_port, config.mail_username, config.mail_password, config.mail_from_addr)
     event_sender = EventSender(mailer, config.mail_to_addr)
     cloud_sender = CloudSender(config.cloud_svc_url)
     test = GoodweHTSet(config, influx_writer, rtu_monitor, event_sender, cloud_sender)
